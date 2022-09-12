@@ -1,8 +1,10 @@
 use aqt_sim::protocol::oed::OEDWithSwap;
-use aqt_sim::sim::Simulation;
+use aqt_sim::simulation::Simulation;
 use aqt_sim::network::presets;
 use aqt_sim::protocol::Protocol;
 use aqt_sim::adversary::Adversary;
+use aqt_sim::simulation::threshold::TimedThreshold;
+use aqt_sim::simulation::recorder::{ Recorder, DebugPrintRecorder, BufferLoadRecorder };
 use aqt_sim::adversary::path_random::SDPathRandomAdversary;
 
 const NUM_BUFFERS: usize = 10;
@@ -12,6 +14,11 @@ fn main() {
     let network = presets::construct_path(NUM_BUFFERS);
     let protocol = OEDWithSwap::new(1);
     let adversary = SDPathRandomAdversary::new();
-    let mut simulation = Simulation::new(network, protocol, adversary, true);
-    simulation.run(NUM_RDS);
+    let threshold = TimedThreshold::new(NUM_RDS);
+    let recorders: Vec<Box<dyn Recorder>> = vec![
+        Box::new(DebugPrintRecorder::new()),
+        Box::new(BufferLoadRecorder::new("/home/cammatsui/Dev/aqt_sim/test.csv".to_string())),
+    ];
+    let mut simulation = Simulation::new(network, protocol, adversary, threshold, recorders);
+    simulation.run();
 }
