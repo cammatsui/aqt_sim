@@ -2,7 +2,6 @@ use aqt_sim::protocol::oed::OEDWithSwap;
 use aqt_sim::sim::Simulation;
 use aqt_sim::network::presets;
 use aqt_sim::protocol::Protocol;
-use aqt_sim::protocol::greedy::GreedyFIFO;
 use aqt_sim::adversary::Adversary;
 use aqt_sim::adversary::path_random::SDPathRandomAdversary;
 

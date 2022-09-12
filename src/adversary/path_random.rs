@@ -1,4 +1,4 @@
-//! This module contains stochastic adversaries which work on a Path.
+//! This module contains stochastic adversaries which work on a path network.
 
 use rand::Rng;
 use crate::packet::{ Packet, PacketFactory };

@@ -14,7 +14,7 @@ use crate::network::NodeID;
 ///
 /// We enforce the ID uniqueness by *only* allowing packets to be created via the `PacketFactory`
 /// struct.
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
 pub struct Packet {
     id: usize,
     path: PacketPath,
@@ -102,6 +102,12 @@ impl fmt::Debug for Packet {
             .field("cur_node", &self.cur_node())
             .field("injection_rd", &self.injection_rd)
             .finish()
+    }
+}
+
+impl PartialEq for Packet {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }
 

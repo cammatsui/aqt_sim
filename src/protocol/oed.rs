@@ -46,16 +46,16 @@ impl OEDWithSwap {
             if network.get_edgebuffer_mut(from_id, to_id).unwrap().buffer.len() == 0 { continue };
             let (forward, backward) = forward_or_backward[from_id];
             if forward {
-                let oldest_idx = self.get_oldest_packet_idx(from_id, to_id, network).unwrap();
+                let o_idx = self.get_oldest_packet_idx(from_id, to_id, network).unwrap();
                 let buffer = &mut network.get_edgebuffer_mut(from_id, to_id).unwrap().buffer;
-                let mut p = buffer.remove(oldest_idx);
+                let mut p = buffer.remove(o_idx);
                 p.increment_path_idx();
                 result.push(p);
             }
             if backward {
-                let youngest_idx = self.get_youngest_packet_idx(from_id, to_id, network).unwrap();
+                let y_idx = self.get_youngest_packet_idx(from_id, to_id, network).unwrap();
                 let buffer = &mut network.get_edgebuffer_mut(from_id, to_id).unwrap().buffer;
-                let mut p = buffer.remove(youngest_idx);
+                let mut p = buffer.remove(y_idx);
                 p.decrement_path_idx();
                 result.push(p);
             }
@@ -66,7 +66,7 @@ impl OEDWithSwap {
 
     /// Get injection rounds of the oldest packet (to potentially send forward) and the youngest
     /// packet (to potentially send backward).
-    fn get_oldest_youngest_injection_rds(
+    fn buffer_oldest_youngest_injection_rds(
         &self,
         from_id: NodeID,
         to_id: NodeID,
@@ -156,7 +156,7 @@ impl OEDWithSwap {
         for from_id in 0..num_nodes-1 {
             let to_id = from_id + 1;
             oldest_youngest_rds.push(
-                self.get_oldest_youngest_injection_rds(from_id, to_id, network)
+                self.buffer_oldest_youngest_injection_rds(from_id, to_id, network)
             );
         }
 
@@ -195,4 +195,163 @@ impl OEDWithSwap {
 
         result
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::network::presets::construct_path;
+    use crate::packet::{ PacketFactory, PacketPath };
+    use crate::network::Network;
+    use crate::protocol::Protocol;
+    use super::OEDWithSwap;
+    
+    const PATH_LEN: usize = 10;
+
+    fn setup_network_and_packet_path() -> (Network, PacketPath) {
+        (construct_path(PATH_LEN), (0..PATH_LEN).collect())
+    }
+
+    #[test]
+    fn test_absorption() {
+        let (mut network, packet_path) = setup_network_and_packet_path();
+        let mut factory = PacketFactory::new();
+        // 0  
+        // -  ==>  -
+        // 9       9
+        //
+        let p1 = factory.create_packet(packet_path.clone(), 0, 8);
+        network.add_packet(p1, 9, 10);
+
+        let mut oed = OEDWithSwap::new(1);
+        oed.forward_packets(&mut network);
+
+        let b10 = &network.get_edgebuffer(9, 10).unwrap().buffer;
+        assert_eq!(b10.len(), 0);
+    }
+
+    #[test]
+    fn test_absorption_multiple_packets_in_last() {
+        let (mut network, packet_path) = setup_network_and_packet_path();
+        let mut factory = PacketFactory::new();
+        // 1 
+        // 0       1
+        // -  ==>  -
+        // 9       9
+        //
+        let p1 = factory.create_packet(packet_path.clone(), 0, 8);
+        let p2 = factory.create_packet(packet_path.clone(), 1, 8);
+        let p2_c = p2.clone();
+        network.add_packet(p1, 9, 10);
+        network.add_packet(p2, 9, 10);
+
+        let mut oed = OEDWithSwap::new(1);
+        oed.forward_packets(&mut network);
+
+        let b10 = &network.get_edgebuffer(9, 10).unwrap().buffer;
+        assert!(b10.contains(&p2_c));
+    }
+
+    #[test]
+    fn test_forward_oldest() {
+        let (mut network, packet_path) = setup_network_and_packet_path();
+        let mut factory = PacketFactory::new();
+        // 1          
+        // 0         1 0
+        // ---  ==>  ---
+        // 0 1       0 1
+        //
+        let p1 = factory.create_packet(packet_path.clone(), 0, 0);
+        let p2 = factory.create_packet(packet_path.clone(), 1, 0);
+
+        let (p1_c, p2_c) = (p1.clone(), p2.clone());
+
+        network.add_packet(p1, 0, 1);
+        network.add_packet(p2, 0, 1);
+
+        let mut oed = OEDWithSwap::new(1);
+        oed.forward_packets(&mut network);
+
+        let b1 = &network.get_edgebuffer(0, 1).unwrap().buffer;
+        let b2 = &network.get_edgebuffer(1, 2).unwrap().buffer;
+
+        assert!(b1.contains(&p2_c));
+        assert!(b2.contains(&p1_c));
+    }
+
+    #[test]
+    fn test_even_swap() {
+        let (mut network, packet_path) = setup_network_and_packet_path();
+        let mut factory = PacketFactory::new();
+        // 3 2       3
+        // 0 1       2 0 1
+        // ----- ==> -----
+        // 0 1 2     0 1 2
+        let p1 = factory.create_packet(packet_path.clone(), 0, 0);
+        let p2 = factory.create_packet(packet_path.clone(), 1, 1);
+        let p3 = factory.create_packet(packet_path.clone(), 2, 1);
+        let p4 = factory.create_packet(packet_path.clone(), 3, 0);
+
+        let (p1_c, p2_c, p3_c, p4_c) = (p1.clone(), p2.clone(), p3.clone(), p4.clone());
+
+        network.add_packet(p1, 0, 1);
+        network.add_packet(p2, 1, 2);
+        network.add_packet(p3, 1, 2);
+        network.add_packet(p4, 0, 1);
+
+        let mut oed = OEDWithSwap::new(1);
+        oed.forward_packets(&mut network);
+
+        let b1 = &network.get_edgebuffer(0, 1).unwrap().buffer;
+        let b2 = &network.get_edgebuffer(1, 2).unwrap().buffer;
+        let b3 = &network.get_edgebuffer(2, 3).unwrap().buffer;
+
+        assert!(b1.contains(&p4_c));
+        assert!(b1.contains(&p3_c));
+        assert!(b2.contains(&p1_c));
+        assert!(b3.contains(&p2_c));
+    }
+
+    #[test]
+    fn test_odd_no_swap() {
+        let (mut network, packet_path) = setup_network_and_packet_path();
+        let mut factory = PacketFactory::new();
+        // 4 5         0
+        // 3 2       4 5
+        // 0 1       3 2 1
+        // ----- ==> -----
+        // 0 1 2     0 1 2
+        //
+        let p1 = factory.create_packet(packet_path.clone(), 0, 0);
+        let p2 = factory.create_packet(packet_path.clone(), 1, 1);
+        let p3 = factory.create_packet(packet_path.clone(), 2, 1);
+        let p4 = factory.create_packet(packet_path.clone(), 3, 0);
+        let p5 = factory.create_packet(packet_path.clone(), 4, 0);
+        let p6 = factory.create_packet(packet_path.clone(), 5, 1);
+
+        let (p1_c, p2_c, p3_c, p4_c, p5_c, p6_c) 
+            = (p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone(), p6.clone());
+
+        network.add_packet(p1, 0, 1);
+        network.add_packet(p2, 1, 2);
+        network.add_packet(p3, 1, 2);
+        network.add_packet(p4, 0, 1);
+        network.add_packet(p5, 0, 1);
+        network.add_packet(p6, 1, 2);
+
+        let mut oed = OEDWithSwap::new(1);
+        oed.forward_packets(&mut network);
+
+        let b1 = &network.get_edgebuffer(0, 1).unwrap().buffer;
+        let b2 = &network.get_edgebuffer(1, 2).unwrap().buffer;
+        let b3 = &network.get_edgebuffer(2, 3).unwrap().buffer;
+
+        assert!(b1.contains(&p4_c));
+        assert!(b1.contains(&p5_c));
+        assert!(b2.contains(&p6_c));
+        assert!(b2.contains(&p3_c));
+        assert!(b2.contains(&p1_c));
+        assert!(b3.contains(&p2_c));
+    }
+
 }
