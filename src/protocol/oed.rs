@@ -1,5 +1,6 @@
 //! This module contains implementations of OED protocols.
 
+use serde::Serialize;
 use crate::protocol::Protocol;
 use crate::network::{ Network, NodeID };
 use crate::packet::Packet;
@@ -9,11 +10,14 @@ use crate::packet::Packet;
 /// the OED criterion or the oldest packet in x is older than the youngest in x+1, and send the 
 /// youngest packet in x backward if L(x-1) > 0, x-1 and x fail the OED criterion, and the youngest
 /// packet in x is younger than the oldest in x-1.
-pub struct OEDWithSwap;
+#[derive(Serialize)]
+pub struct OEDWithSwap {
+    protocol_name: String,
+}
 
 impl Protocol for OEDWithSwap {
     fn new(_capacity: usize) -> Self {
-        OEDWithSwap {}
+        OEDWithSwap { protocol_name: String::from("OEDWithSwap") }
     } 
 
     fn forward_packets(&mut self, network: &mut Network) {
@@ -221,13 +225,13 @@ mod tests {
         // 9       9
         //
         let p1 = factory.create_packet(packet_path.clone(), 0, 8);
-        network.add_packet(p1, 9, 10);
-
         let mut oed = OEDWithSwap::new(1);
+        oed.add_packet(p1, &mut network);
+
         oed.forward_packets(&mut network);
 
-        let b10 = &network.get_edgebuffer(9, 10).unwrap().buffer;
-        assert_eq!(b10.len(), 0);
+        let b9 = &network.get_edgebuffer(8, 9).unwrap().buffer;
+        assert_eq!(b9.len(), 0);
     }
 
     #[test]
@@ -242,14 +246,14 @@ mod tests {
         let p1 = factory.create_packet(packet_path.clone(), 0, 8);
         let p2 = factory.create_packet(packet_path.clone(), 1, 8);
         let p2_c = p2.clone();
-        network.add_packet(p1, 9, 10);
-        network.add_packet(p2, 9, 10);
-
         let mut oed = OEDWithSwap::new(1);
+        oed.add_packet(p1, &mut network);
+        oed.add_packet(p2, &mut network);
+
         oed.forward_packets(&mut network);
 
-        let b10 = &network.get_edgebuffer(9, 10).unwrap().buffer;
-        assert!(b10.contains(&p2_c));
+        let b9 = &network.get_edgebuffer(8, 9).unwrap().buffer;
+        assert!(b9.contains(&p2_c));
     }
 
     #[test]

@@ -3,6 +3,7 @@
 //! done via `NodeID`s, indices into the network's `Node` vector, where nodes are referenced by 
 //! IDs and `EdgeBuffers` are referenced by pairs of from- and to-IDs.
 
+use serde::ser::{ Serialize, Serializer, SerializeSeq };
 use hashbrown::HashMap;
 use crate::packet::Packet;
 use std::fmt;
@@ -46,6 +47,25 @@ impl Network {
         Network { nodes: Vec::new() }
     }
 
+    // Get a `Vec<Vec<usize>>` which is adjacency lists of underlying graph.
+    pub fn get_graph_structure(&self) -> Vec<Vec<usize>> {
+        // eg:
+        // [
+        //  [3, 5],
+        //  [1, 2],
+        // ]
+        let mut adj_vecs = Vec::new();
+        for node_id in self.get_nodes() {
+            let mut this_node_neighbors = Vec::new();
+            for neighbor_id in self.get_neighbors(node_id) {
+                this_node_neighbors.push(neighbor_id);
+            }
+            adj_vecs.push(this_node_neighbors);
+        }
+        adj_vecs
+    }
+
+
     /// Add a new `Node` to the network.
     pub fn add_node(&mut self) -> NodeID {
         let node_id = self.nodes.len();
@@ -60,11 +80,11 @@ impl Network {
         self.check_node_id(from_id);
 
         let from_node: &mut Node = &mut self.nodes[from_id];
-        if from_node.edgebuffer_map.contains_key(&to_id) {
+        if from_node.contains_key(&to_id) {
             panic!("There is already an EdgeBuffer between nodes {} and {}", from_id, to_id);
         }
 
-        from_node.edgebuffer_map.insert(to_id, EdgeBuffer::new());
+        from_node.insert(to_id, EdgeBuffer::new());
     }
 
     /// Get a vector of the given node's neighbors' node ids.
@@ -72,7 +92,7 @@ impl Network {
         self.check_node_id(node_id);
         let node = &self.nodes[node_id];
         let mut result = Vec::new();
-        for neighbor_id in node.edgebuffer_map.keys() {
+        for neighbor_id in node.keys() {
             result.push(neighbor_id.clone());
         }
         result
@@ -113,7 +133,7 @@ impl Network {
     pub fn get_edgebuffer(&self, from_id: NodeID, to_id: NodeID) -> Option<&EdgeBuffer> {
         self.check_node_id(from_id);
         self.check_node_id(to_id);
-        match self.nodes[from_id].edgebuffer_map.get(&to_id) {
+        match self.nodes[from_id].get(&to_id) {
             Some(eb) => Some(&eb),
             None => None,
         }
@@ -128,7 +148,7 @@ impl Network {
     ) -> Option<&mut EdgeBuffer> {
         self.check_node_id(from_id);
         self.check_node_id(to_id);
-        match self.nodes[from_id].edgebuffer_map.get_mut(&to_id) {
+        match self.nodes[from_id].get_mut(&to_id) {
             Some(eb) => Some(eb),
             None => None,
         }
@@ -139,7 +159,7 @@ impl Network {
     pub fn take_buffer(&mut self, from_id: NodeID, to_id: NodeID) -> Option<Buffer> {
         self.check_node_id(from_id);
         self.check_node_id(to_id);
-        match self.nodes[from_id].edgebuffer_map.get_mut(&to_id) {
+        match self.nodes[from_id].get_mut(&to_id) {
             Some(eb) => {
                 let mut buffer = Vec::new();
                 std::mem::swap(&mut buffer, &mut eb.buffer);
@@ -156,6 +176,17 @@ impl Network {
     }
 }
 
+impl Serialize for Network {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut seq = serializer.serialize_seq(Some(self.get_num_nodes()))?;
+        for e in self.get_graph_structure().into_iter() {
+            seq.serialize_element(&e)?;
+        }
+        seq.end()
+    }
+}
+// TODO: implement Deserialize for Network
+
 impl fmt::Display for Network {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut result = String::new();
@@ -170,15 +201,8 @@ impl fmt::Display for Network {
 }
 
 
-pub struct Node {
-    pub edgebuffer_map: HashMap<NodeID, EdgeBuffer>,
-}
-
-impl Node {
-    pub fn new() -> Self {
-        Node { edgebuffer_map: HashMap::new() }
-    }
-}
+/// Just a map of outgoing `EdgeBuffer`s.
+pub type Node = HashMap<NodeID, EdgeBuffer>;
 
 
 /// An `EdgeBuffer` represents an edge in the graph with an associated `Buffer` (just a vector of
@@ -210,11 +234,11 @@ pub mod presets {
     /// Construct a path network with the given number of buffers.
     pub fn construct_path(num_buffers: usize) -> Network {
         let mut network = Network::new();
-        for _ in 0..num_buffers+1 {
+        for _ in 0..num_buffers {
             network.add_node();
         }
 
-        for buff_id in 0..num_buffers {
+        for buff_id in 0..num_buffers-1 {
             network.add_edgebuffer(buff_id, buff_id+1);
         }
 

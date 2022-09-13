@@ -8,7 +8,7 @@ use aqt_sim::simulation::recorder::{ Recorder, DebugPrintRecorder, BufferLoadRec
 use aqt_sim::adversary::path_random::SDPathRandomAdversary;
 
 const NUM_BUFFERS: usize = 10;
-const NUM_RDS: usize = 10;
+const NUM_RDS: usize = 1;
 
 fn main() {
     let network = presets::construct_path(NUM_BUFFERS);
@@ -17,8 +17,8 @@ fn main() {
     let threshold = TimedThreshold::new(NUM_RDS);
     let recorders: Vec<Box<dyn Recorder>> = vec![
         Box::new(DebugPrintRecorder::new()),
-        Box::new(BufferLoadRecorder::new("/home/cammatsui/Dev/aqt_sim/test.csv".to_string())),
+        Box::new(BufferLoadRecorder::new()),
     ];
-    let mut simulation = Simulation::new(network, protocol, adversary, threshold, recorders);
+    let mut simulation = Simulation::new(network, protocol, adversary, threshold, recorders, "/home/cammatsui/Dev/aqt_sim/output".to_string());
     simulation.run();
 }

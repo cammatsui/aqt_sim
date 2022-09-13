@@ -1,5 +1,6 @@
 //! This module contains implementations of greedy protocols.
 
+use serde::Serialize;
 use crate::network::{ NodeID, Network };
 use crate::packet::Packet;
 use crate::protocol::Protocol;
@@ -8,13 +9,15 @@ use std::cmp::min;
 
 /// The greedy FIFO protocol always forwards packets as many packets from a buffer as allowed by
 /// the protocol's capacity.
+#[derive(Serialize)]
 pub struct GreedyFIFO {
     capacity: usize,
+    protocol_name: String,
 }
 
 impl Protocol for GreedyFIFO {
     fn new(capacity: usize) -> Self {
-        GreedyFIFO { capacity }
+        GreedyFIFO { capacity, protocol_name: String::from("GreedyFIFO") }
     }
 
     fn forward_packets(&mut self, network: &mut Network) {
