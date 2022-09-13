@@ -4,7 +4,6 @@
 use crate::packet::Packet;
 use crate::network::Network;
 
-
 pub mod greedy;
 pub mod oed;
 
