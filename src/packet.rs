@@ -23,6 +23,11 @@ pub struct Packet {
 }
 
 impl Packet {
+    /// Get this `Packet`'s id.
+    pub fn get_id(&self) -> usize {
+        self.id
+    }
+
     /// Increment the index into the `PacketPath`. We need to keep this in sync with the packet's 
     /// state in the `Network` so we can quickly forward packets.
     pub fn increment_path_idx(&mut self) {
@@ -51,6 +56,7 @@ impl Packet {
         self.path_idx == self.path.len()-1
     }
 
+    /// Get the injection round of this `Packet`.
     pub fn get_injection_rd(&self) -> usize {
         self.injection_rd
     }

@@ -185,6 +185,7 @@ impl Serialize for Network {
         seq.end()
     }
 }
+
 // TODO: implement Deserialize for Network
 
 impl fmt::Display for Network {

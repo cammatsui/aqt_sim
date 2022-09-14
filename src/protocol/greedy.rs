@@ -20,8 +20,9 @@ impl Protocol for GreedyFIFO {
         GreedyFIFO { capacity, protocol_name: String::from("GreedyFIFO") }
     }
 
-    fn forward_packets(&mut self, network: &mut Network) {
-        let mut packets_to_fwd: Vec<Packet> = Vec::new();
+    fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet> {
+        let mut absorbed = Vec::new();
+        let mut packets_to_fwd = Vec::new();
 
         let eb_ids = network.get_edgebuffers();
         for (from_id, to_id) in eb_ids {
@@ -34,8 +35,11 @@ impl Protocol for GreedyFIFO {
             let p = packets_to_fwd.remove(0);
             if !p.should_be_absorbed() {
                 self.add_packet(p, network)
+            } else {
+                absorbed.push(p);
             }
         }
+        absorbed
     }
 
     fn get_capacity(&self) -> usize {

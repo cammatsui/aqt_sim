@@ -76,14 +76,14 @@ impl<P, A, T> Simulation<P, A, T> where
             }
 
             for recorder in &mut self.recorders {
-                recorder.record(rd, false, &self.network);
+                recorder.record(rd, false, &self.network, None);
             }
 
             // Forward.
-            self.protocol.forward_packets(&mut self.network);
+            let absorbed = self.protocol.forward_packets(&mut self.network);
             
             for recorder in &mut self.recorders {
-                recorder.record(rd, true, &self.network);
+                recorder.record(rd, true, &self.network, Some(&absorbed));
             }
             if self.threshold.check_termination(rd, &self.network) { break };
             rd += 1;

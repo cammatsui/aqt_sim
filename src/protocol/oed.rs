@@ -20,15 +20,19 @@ impl Protocol for OEDWithSwap {
         OEDWithSwap { protocol_name: String::from("OEDWithSwap") }
     } 
 
-    fn forward_packets(&mut self, network: &mut Network) {
+    fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet> {
+        let mut absorbed = Vec::new();
         let mut to_fwd_and_bwd = self.get_packets_to_fwd_and_bwd(network);
         let num_to_fwd_and_bwd = to_fwd_and_bwd.len();
         for _ in 0..num_to_fwd_and_bwd {
             let p = to_fwd_and_bwd.remove(0);
             if !p.should_be_absorbed() {
                 self.add_packet(p, network);
+            } else {
+                absorbed.push(p);
             }
         }
+        absorbed
     }
 
     fn get_capacity(&self) -> usize {
@@ -37,7 +41,7 @@ impl Protocol for OEDWithSwap {
 }
 
 impl OEDWithSwap {
-    /// Get a vec of packets we need to move according to OED with swap.
+    /// Get a vector of packets we need to move according to OED with swap.
     fn get_packets_to_fwd_and_bwd(
         &mut self,
         network: &mut Network

@@ -25,8 +25,8 @@ pub trait Protocol {
         eb.buffer.push(p);
     }
 
-    /// Forward all `Packet`s on the network.
-    fn forward_packets(&mut self, network: &mut Network);
+    /// Forward all `Packet`s on the network. Returns absorbed `Packet`s.
+    fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet>;
 
     /// Get the edge capacity for this protocol.
     fn get_capacity(&self) -> usize;
