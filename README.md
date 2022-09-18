@@ -1,1 +1,1 @@
-# Adverserial Queueing Theory (AQT) Simulator
+# Adversarial Queueing Theory (AQT) Simulator
