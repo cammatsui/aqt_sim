@@ -12,9 +12,6 @@ pub mod oed;
 // TODO: add check_graph_structure() to ensure that the graph we are using works with the given
 // protocol.
 pub trait Protocol {
-    /// Create a new instance of this `Protocol`.
-    fn new(capacity: usize) -> Self;
-
     /// Add a `Packet` to the network.
     fn add_packet(&mut self, p: Packet, network: &mut Network) {
         let eb = network.get_edgebuffer_mut(
@@ -27,7 +24,4 @@ pub trait Protocol {
 
     /// Forward all `Packet`s on the network. Returns absorbed `Packet`s.
     fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet>;
-
-    /// Get the edge capacity for this protocol.
-    fn get_capacity(&self) -> usize;
 }

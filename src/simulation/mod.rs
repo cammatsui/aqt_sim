@@ -4,33 +4,50 @@
 
 use std::fs;
 use std::io::prelude::*;
-use serde::Serialize;
+use crate::adversary::preset::PresetAdversary;
 use crate::network::Network;
 use crate::protocol::Protocol;
 use crate::adversary::Adversary;
-use crate::simulation::threshold::Threshold;
+use crate::simulation::threshold::{ Threshold, TimedThreshold };
 use crate::simulation::recorder::{ Recorder, DebugPrintRecorder };
 
 pub mod threshold;
 pub mod recorder;
+pub mod config;
 
 
 /// Stores all data related to a run of a simulation, including the `Network`, `Protocol`, and
 /// `Adversary`.
-#[derive(Serialize)]
-pub struct Simulation<P, A, T> where P: Protocol, A: Adversary, T: Threshold {
+
+// TODO: if adversary is preset, panic. make new constructor for preset adversaries.
+pub struct Simulation<P, A, T>  where P: Protocol, A: Adversary, T: Threshold{
     network: Network,
     protocol: P,
     adversary: A,
     threshold: T,
-    #[serde(skip_serializing)]
     recorders: Vec<Box<dyn Recorder>>,
 }
 
+impl<P> Simulation<P, PresetAdversary, TimedThreshold>  where 
+    P: Protocol,
+{
+    pub fn new_preset(
+        network: Network,
+        protocol: P,
+        adversary: PresetAdversary,
+        recorders: Vec<Box<dyn Recorder>>,
+        output_path: String,
+    ) -> Self {
+        let threshold: TimedThreshold = TimedThreshold::new(adversary.rds());
+        Simulation::new(network, protocol, adversary, threshold, recorders, output_path)
+    }
+
+}
+
 impl<P, A, T> Simulation<P, A, T> where 
-    P: Protocol + Serialize,
-    A: Adversary + Serialize,
-    T: Threshold + Serialize,
+    P: Protocol,
+    A: Adversary,
+    T: Threshold,
 {
     const SIM_CONFIG_FILENAME: &'static str = "sim_config.json";
     
@@ -45,7 +62,7 @@ impl<P, A, T> Simulation<P, A, T> where
     ) -> Self {
         let mut new_sim = Simulation { network, protocol, adversary, threshold, recorders };
         // TODO: save sim details to json with serde. For now just save network.
-        new_sim.save_config(&output_path);
+        //new_sim.save_config(&output_path);
         for recorder in &mut new_sim.recorders {
             recorder.set_output_path(output_path.clone())
         }
@@ -91,6 +108,7 @@ impl<P, A, T> Simulation<P, A, T> where
         for recorder in &mut self.recorders { recorder.close() }
     }
 
+    /*
     fn save_config(&self, output_path: &str) {
         let data = serde_json::to_string_pretty(&self).unwrap();
         fs::create_dir_all(output_path.clone())
@@ -107,6 +125,6 @@ impl<P, A, T> Simulation<P, A, T> where
         if let Err(_) = writeln!(file, "{}", data) {
             eprintln!("Couldn't write to file {}", filepath);
         }
-
     }
+    */
 }

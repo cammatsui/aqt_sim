@@ -3,7 +3,6 @@
 //! done via `NodeID`s, indices into the network's `Node` vector, where nodes are referenced by 
 //! IDs and `EdgeBuffers` are referenced by pairs of from- and to-IDs.
 
-use serde::ser::{ Serialize, Serializer, SerializeSeq };
 use hashbrown::HashMap;
 use crate::packet::Packet;
 use std::fmt;
@@ -37,6 +36,7 @@ use std::fmt;
 ///     `network.get_buffer_mut(from_id, to_id)`,
 /// - Get and take a `Buffer` and replace it with a new empty `Buffer`:
 ///     `network.take_buffer(from_id, to_id)`.
+#[derive(Clone)]
 pub struct Network {
     nodes: Vec<Node>,
 }
@@ -45,6 +45,20 @@ impl Network {
     /// Get a new empty `Network`.
     pub fn new() -> Self {
         Network { nodes: Vec::new() }
+    }
+
+    /// Create a `Network` from the given adjacency lists.
+    pub fn from_graph_structure(structure: Vec<Vec<usize>>) -> Self {
+        let mut network = Self::new();
+        for _ in 0..structure.len() { network.add_node(); }
+        for node_id in 0..structure.len() {
+            let neighbors = &structure[node_id];
+            let _: Vec<()> = neighbors
+                .into_iter()
+                .map(|to_id| network.add_edgebuffer(node_id, *to_id))
+                .collect();
+        }
+        network
     }
 
     // Get a `Vec<Vec<usize>>` which is adjacency lists of underlying graph.
@@ -176,18 +190,6 @@ impl Network {
     }
 }
 
-impl Serialize for Network {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.get_num_nodes()))?;
-        for e in self.get_graph_structure().into_iter() {
-            seq.serialize_element(&e)?;
-        }
-        seq.end()
-    }
-}
-
-// TODO: implement Deserialize for Network
-
 impl fmt::Display for Network {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut result = String::new();
@@ -208,6 +210,7 @@ pub type Node = HashMap<NodeID, EdgeBuffer>;
 
 /// An `EdgeBuffer` represents an edge in the graph with an associated `Buffer` (just a vector of
 /// `Packet`s).
+#[derive(Clone)]
 pub struct EdgeBuffer {
     pub buffer: Buffer,
 }

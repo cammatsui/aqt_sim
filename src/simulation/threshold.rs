@@ -1,7 +1,6 @@
 //! This module contains the `Threshold` trait and its implementations, which determine when a
 //! `Simulation` should stop running.
 
-use serde::Serialize;
 use crate::network::Network;
 
 
@@ -14,16 +13,14 @@ pub trait Threshold {
 
 
 /// To end a `Simulation` after a specified number of rounds has elapsed.
-#[derive(Serialize)]
 pub struct TimedThreshold {
     max_rds: usize,
-    threshold_name: String,
 }
 
 impl TimedThreshold {
     /// Create a new `TimedThreshold` with the given number of maximum rounds.
     pub fn new(max_rds: usize) -> Self {
-        TimedThreshold { max_rds, threshold_name: String::from("TimedThreshold") }
+        TimedThreshold { max_rds }
     }
 }
 
@@ -32,4 +29,3 @@ impl Threshold for TimedThreshold {
         rd >= self.max_rds
     }
 }
-

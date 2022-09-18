@@ -1,6 +1,5 @@
 //! This module contains implementations of OED protocols.
 
-use serde::Serialize;
 use crate::protocol::Protocol;
 use crate::network::{ Network, NodeID };
 use crate::packet::Packet;
@@ -10,16 +9,15 @@ use crate::packet::Packet;
 /// the OED criterion or the oldest packet in x is older than the youngest in x+1, and send the 
 /// youngest packet in x backward if L(x-1) > 0, x-1 and x fail the OED criterion, and the youngest
 /// packet in x is younger than the oldest in x-1.
-#[derive(Serialize)]
-pub struct OEDWithSwap {
-    protocol_name: String,
+pub struct OEDWithSwap;
+
+impl OEDWithSwap {
+    pub fn new() -> Self {
+        OEDWithSwap
+    } 
 }
 
 impl Protocol for OEDWithSwap {
-    fn new(_capacity: usize) -> Self {
-        OEDWithSwap { protocol_name: String::from("OEDWithSwap") }
-    } 
-
     fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet> {
         let mut absorbed = Vec::new();
         let mut to_fwd_and_bwd = self.get_packets_to_fwd_and_bwd(network);
@@ -33,10 +31,6 @@ impl Protocol for OEDWithSwap {
             }
         }
         absorbed
-    }
-
-    fn get_capacity(&self) -> usize {
-        1
     }
 }
 
@@ -229,7 +223,7 @@ mod tests {
         // 9       9
         //
         let p1 = factory.create_packet(packet_path.clone(), 0, 8);
-        let mut oed = OEDWithSwap::new(1);
+        let mut oed = OEDWithSwap::new();
         oed.add_packet(p1, &mut network);
 
         oed.forward_packets(&mut network);
@@ -250,7 +244,7 @@ mod tests {
         let p1 = factory.create_packet(packet_path.clone(), 0, 8);
         let p2 = factory.create_packet(packet_path.clone(), 1, 8);
         let p2_c = p2.clone();
-        let mut oed = OEDWithSwap::new(1);
+        let mut oed = OEDWithSwap::new();
         oed.add_packet(p1, &mut network);
         oed.add_packet(p2, &mut network);
 
@@ -277,7 +271,7 @@ mod tests {
         network.add_packet(p1, 0, 1);
         network.add_packet(p2, 0, 1);
 
-        let mut oed = OEDWithSwap::new(1);
+        let mut oed = OEDWithSwap::new();
         oed.forward_packets(&mut network);
 
         let b1 = &network.get_edgebuffer(0, 1).unwrap().buffer;
@@ -307,7 +301,7 @@ mod tests {
         network.add_packet(p3, 1, 2);
         network.add_packet(p4, 0, 1);
 
-        let mut oed = OEDWithSwap::new(1);
+        let mut oed = OEDWithSwap::new();
         oed.forward_packets(&mut network);
 
         let b1 = &network.get_edgebuffer(0, 1).unwrap().buffer;
@@ -347,7 +341,7 @@ mod tests {
         network.add_packet(p5, 0, 1);
         network.add_packet(p6, 1, 2);
 
-        let mut oed = OEDWithSwap::new(1);
+        let mut oed = OEDWithSwap::new();
         oed.forward_packets(&mut network);
 
         let b1 = &network.get_edgebuffer(0, 1).unwrap().buffer;
