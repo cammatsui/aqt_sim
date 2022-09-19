@@ -1,11 +1,29 @@
 //! This module contains the `Threshold` trait and its implementations, which determine when a
 //! `Simulation` should stop running.
 
+use serde::{ Serialize, Deserialize };
 use crate::network::Network;
 
 
 /// Used to end a `Simulation`.
-pub trait Threshold {
+#[derive(Serialize, Deserialize, Clone)]
+pub enum Threshold {
+    Timed(TimedThreshold),
+}
+
+impl Threshold {
+    /// Check whether the `Simulation` should terminate based on the round number and network
+    /// state.
+    pub fn check_termination(&mut self, rd: usize, network: &Network) -> bool {
+        match self {
+            Self::Timed(t) => t.check_termination(rd, network)
+        }
+    }
+}
+
+
+/// Trait which all `Threshold`s should implement.
+pub trait ThresholdTrait {
     /// Check whether to terminate the simulation and update any internal state of the
     /// `Threshold.`.
     fn check_termination(&mut self, rd: usize, network: &Network) -> bool;
@@ -13,6 +31,7 @@ pub trait Threshold {
 
 
 /// To end a `Simulation` after a specified number of rounds has elapsed.
+#[derive(Serialize, Deserialize, Clone)]
 pub struct TimedThreshold {
     max_rds: usize,
 }
@@ -24,7 +43,7 @@ impl TimedThreshold {
     }
 }
 
-impl Threshold for TimedThreshold {
+impl ThresholdTrait for TimedThreshold {
     fn check_termination(&mut self, rd: usize, _network: &Network) -> bool {
         rd >= self.max_rds
     }

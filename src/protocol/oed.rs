@@ -1,23 +1,25 @@
 //! This module contains implementations of OED protocols.
 
-use crate::protocol::Protocol;
+use serde::{ Serialize, Deserialize };
 use crate::network::{ Network, NodeID };
 use crate::packet::Packet;
+use crate::protocol::ProtocolTrait;
 
 
 /// In the OED With Swap protocol, we forward the oldest packet from buffer x if x and x+1 fulfill
-/// the OED criterion or the oldest packet in x is older than the youngest in x+1, and send the 
+/// the OED criterion or the oldest packet in x is older than the youngest in x+1, and send the
 /// youngest packet in x backward if L(x-1) > 0, x-1 and x fail the OED criterion, and the youngest
 /// packet in x is younger than the oldest in x-1.
-pub struct OEDWithSwap;
+#[derive(Serialize, Deserialize, Clone)]
+pub struct OEDWithSwap {}
 
 impl OEDWithSwap {
     pub fn new() -> Self {
-        OEDWithSwap
-    } 
+        OEDWithSwap {}
+    }
 }
 
-impl Protocol for OEDWithSwap {
+impl ProtocolTrait for OEDWithSwap {
     fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet> {
         let mut absorbed = Vec::new();
         let mut to_fwd_and_bwd = self.get_packets_to_fwd_and_bwd(network);
@@ -36,16 +38,21 @@ impl Protocol for OEDWithSwap {
 
 impl OEDWithSwap {
     /// Get a vector of packets we need to move according to OED with swap.
-    fn get_packets_to_fwd_and_bwd(
-        &mut self,
-        network: &mut Network
-    ) -> Vec<Packet>{
+    fn get_packets_to_fwd_and_bwd(&mut self, network: &mut Network) -> Vec<Packet> {
         let mut result = Vec::new();
         let forward_or_backward = self.get_should_forward_or_backward(network);
         let num_nodes = network.get_num_nodes();
-        for from_id in 0..num_nodes-1 {
+        for from_id in 0..num_nodes - 1 {
             let to_id = from_id + 1;
-            if network.get_edgebuffer_mut(from_id, to_id).unwrap().buffer.len() == 0 { continue };
+            if network
+                .get_edgebuffer_mut(from_id, to_id)
+                .unwrap()
+                .buffer
+                .len()
+                == 0
+            {
+                continue;
+            };
             let (forward, backward) = forward_or_backward[from_id];
             if forward {
                 let o_idx = self.get_oldest_packet_idx(from_id, to_id, network).unwrap();
@@ -55,7 +62,9 @@ impl OEDWithSwap {
                 result.push(p);
             }
             if backward {
-                let y_idx = self.get_youngest_packet_idx(from_id, to_id, network).unwrap();
+                let y_idx = self
+                    .get_youngest_packet_idx(from_id, to_id, network)
+                    .unwrap();
                 let buffer = &mut network.get_edgebuffer_mut(from_id, to_id).unwrap().buffer;
                 let mut p = buffer.remove(y_idx);
                 p.decrement_path_idx();
@@ -76,12 +85,19 @@ impl OEDWithSwap {
     ) -> Option<(usize, usize)> {
         let eb = network.get_edgebuffer(from_id, to_id).unwrap();
         let load = eb.buffer.len();
-        if load == 0 { return None };
+        if load == 0 {
+            return None;
+        };
 
         let o_idx = self.get_oldest_packet_idx(from_id, to_id, network).unwrap();
-        let y_idx = self.get_youngest_packet_idx(from_id, to_id, network).unwrap();
+        let y_idx = self
+            .get_youngest_packet_idx(from_id, to_id, network)
+            .unwrap();
 
-        Some((eb.buffer[o_idx].get_injection_rd(), eb.buffer[y_idx].get_injection_rd()))
+        Some((
+            eb.buffer[o_idx].get_injection_rd(),
+            eb.buffer[y_idx].get_injection_rd(),
+        ))
     }
 
     /// Get the index of the oldest packet in the given buffer.
@@ -93,7 +109,9 @@ impl OEDWithSwap {
     ) -> Option<usize> {
         let eb = network.get_edgebuffer(from_id, to_id).unwrap();
         let load = eb.buffer.len();
-        if load == 0 { return None };
+        if load == 0 {
+            return None;
+        };
 
         let mut oldest_injection_rd = usize::MAX;
         let mut oldest_injection_idx = 0;
@@ -118,7 +136,9 @@ impl OEDWithSwap {
     ) -> Option<usize> {
         let eb = network.get_edgebuffer(from_id, to_id).unwrap();
         let load = eb.buffer.len();
-        if load == 0 { return None };
+        if load == 0 {
+            return None;
+        };
 
         let mut youngest_injection_rd = 0;
         let mut youngest_injection_idx = 0;
@@ -141,44 +161,53 @@ impl OEDWithSwap {
         // Calculate OED criterion for each buffer.
         let mut oed_criterion = Vec::new();
         let num_nodes = network.get_num_nodes();
-        for from_id in 0..num_nodes-2 {
-            let this_load = network.get_edgebuffer(from_id, from_id+1).unwrap()
-                .buffer.len();
-            let next_load = network.get_edgebuffer(from_id+1, from_id+2).unwrap()
-                .buffer.len();
+        for from_id in 0..num_nodes - 2 {
+            let this_load = network
+                .get_edgebuffer(from_id, from_id + 1)
+                .unwrap()
+                .buffer
+                .len();
+            let next_load = network
+                .get_edgebuffer(from_id + 1, from_id + 2)
+                .unwrap()
+                .buffer
+                .len();
             let oed = this_load > next_load || (this_load == next_load && this_load % 2 == 1);
             oed_criterion.push(oed);
         }
-        let last_nonempty = 
-            network.get_edgebuffer(num_nodes-2, num_nodes-1).unwrap().buffer.len() != 0;
+        let last_nonempty = network
+            .get_edgebuffer(num_nodes - 2, num_nodes - 1)
+            .unwrap()
+            .buffer
+            .len()
+            != 0;
         oed_criterion.push(last_nonempty);
 
         // Get max/min ages of buffers.
         let mut oldest_youngest_rds = Vec::new();
-        for from_id in 0..num_nodes-1 {
+        for from_id in 0..num_nodes - 1 {
             let to_id = from_id + 1;
-            oldest_youngest_rds.push(
-                self.buffer_oldest_youngest_injection_rds(from_id, to_id, network)
-            );
+            oldest_youngest_rds
+                .push(self.buffer_oldest_youngest_injection_rds(from_id, to_id, network));
         }
 
         // Use OED with Swapping protocol to determine whether each buffer should send a packet
         // forward and/or backward. For a tuple in result, the first idx is whether to forward, the
         // second is whether to send a packet backward.
         let mut result = Vec::new();
-        for from_id in 0..num_nodes-1 {
+        for from_id in 0..num_nodes - 1 {
             let this_oldest_youngest = oldest_youngest_rds[from_id];
-            if this_oldest_youngest == None { 
+            if this_oldest_youngest == None {
                 result.push((false, false));
                 continue;
             }
             let (this_oldest, this_youngest) = this_oldest_youngest.unwrap();
 
             let should_fwd;
-            if from_id != num_nodes-2 {
-                let next_oldest_youngest = oldest_youngest_rds[from_id+1];
-                should_fwd = oed_criterion[from_id] 
-                    || this_oldest < next_oldest_youngest.unwrap().1;
+            if from_id != num_nodes - 2 {
+                let next_oldest_youngest = oldest_youngest_rds[from_id + 1];
+                should_fwd =
+                    oed_criterion[from_id] || this_oldest < next_oldest_youngest.unwrap().1;
             } else {
                 // Always forward for the last buffer since at this point we know the last buffer
                 // is nonempty.
@@ -187,9 +216,10 @@ impl OEDWithSwap {
 
             let mut should_bwd = false;
             if from_id != 0 {
-                let prev_oldest_youngest = oldest_youngest_rds[from_id-1];
-                should_bwd = prev_oldest_youngest != None 
-                    && (!oed_criterion[from_id-1] && this_youngest > prev_oldest_youngest.unwrap().0);
+                let prev_oldest_youngest = oldest_youngest_rds[from_id - 1];
+                should_bwd = prev_oldest_youngest != None
+                    && (!oed_criterion[from_id - 1]
+                        && this_youngest > prev_oldest_youngest.unwrap().0);
             }
 
             result.push((should_fwd, should_bwd));
@@ -199,15 +229,14 @@ impl OEDWithSwap {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::network::presets::construct_path;
-    use crate::packet::{ PacketFactory, PacketPath };
-    use crate::network::Network;
-    use crate::protocol::Protocol;
     use super::OEDWithSwap;
-    
+    use super::ProtocolTrait;
+    use crate::network::presets::construct_path;
+    use crate::network::Network;
+    use crate::packet::{PacketFactory, PacketPath};
+
     const PATH_LEN: usize = 10;
 
     fn setup_network_and_packet_path() -> (Network, PacketPath) {
@@ -218,7 +247,7 @@ mod tests {
     fn test_absorption() {
         let (mut network, packet_path) = setup_network_and_packet_path();
         let mut factory = PacketFactory::new();
-        // 0  
+        // 0
         // -  ==>  -
         // 9       9
         //
@@ -236,7 +265,7 @@ mod tests {
     fn test_absorption_multiple_packets_in_last() {
         let (mut network, packet_path) = setup_network_and_packet_path();
         let mut factory = PacketFactory::new();
-        // 1 
+        // 1
         // 0       1
         // -  ==>  -
         // 9       9
@@ -258,7 +287,7 @@ mod tests {
     fn test_forward_oldest() {
         let (mut network, packet_path) = setup_network_and_packet_path();
         let mut factory = PacketFactory::new();
-        // 1          
+        // 1
         // 0         1 0
         // ---  ==>  ---
         // 0 1       0 1
@@ -331,8 +360,14 @@ mod tests {
         let p5 = factory.create_packet(packet_path.clone(), 4, 0);
         let p6 = factory.create_packet(packet_path.clone(), 5, 1);
 
-        let (p1_c, p2_c, p3_c, p4_c, p5_c, p6_c) 
-            = (p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone(), p6.clone());
+        let (p1_c, p2_c, p3_c, p4_c, p5_c, p6_c) = (
+            p1.clone(),
+            p2.clone(),
+            p3.clone(),
+            p4.clone(),
+            p5.clone(),
+            p6.clone(),
+        );
 
         network.add_packet(p1, 0, 1);
         network.add_packet(p2, 1, 2);
@@ -355,5 +390,4 @@ mod tests {
         assert!(b2.contains(&p1_c));
         assert!(b3.contains(&p2_c));
     }
-
 }

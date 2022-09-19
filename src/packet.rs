@@ -120,6 +120,7 @@ impl PartialEq for Packet {
 
 /// This struct allows for the creation of `Packet`s with unique ids. We thus require all `Packet`s
 /// to be created through a `PacketFactory`.
+#[derive(Default, Clone)]
 pub struct PacketFactory {
     cur_id: usize,
 }
@@ -142,6 +143,8 @@ impl PacketFactory {
         p
     }
 }
+
+
 
 
 /// The path of `Node`s that a `Packet` will take through a `Network`.

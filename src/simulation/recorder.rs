@@ -1,5 +1,6 @@
 use std::fs;
 use std::io::prelude::*;
+use serde::Deserialize;
 use crate::network::Network;
 use crate::packet::Packet;
 
@@ -7,8 +8,48 @@ use crate::packet::Packet;
 const LINE_LIMIT: usize = 5000;
 
 
+/// Enum for all `Recorder`s.
+#[derive(Deserialize, Clone)]
+pub enum Recorder {
+    DebugPrint(DebugPrintRecorder),
+    File(FileRecorder),
+}
+
+impl Recorder {
+    /// Record the state of the `Simulation` via the `RecorderTrait`.
+    pub fn record(
+        &mut self,
+        rd: usize,
+        prime: bool,
+        network: &Network,
+        absorbed: Option<&Vec<Packet>>,
+    ) {
+        match self {
+            Self::DebugPrint(rec) => rec.record(rd, prime, network, absorbed),
+            Self::File(rec) => rec.record(rd, prime, network, absorbed),
+        }
+    }
+
+    /// Set the output path for this `Recorder` via the `RecorderTrait`.
+    pub fn set_output_path(&mut self, output_path: String) {
+        match self {
+            Self::DebugPrint(rec) => rec.set_output_path(output_path),
+            Self::File(rec) => rec.set_output_path(output_path),
+        }
+    }
+
+    /// Close this `Recorder` via the `RecorderTrait`.
+    pub fn close(&mut self) {
+        match self {
+            Self::DebugPrint(rec) => rec.close(),
+            Self::File(rec) => rec.close(),
+        }
+    }
+}
+
+
 /// Trait implemented by all recorders.
-pub trait Recorder {
+pub trait RecorderTrait {
     fn record(&mut self, rd: usize, prime: bool, network: &Network, absorbed: Option<&Vec<Packet>>);
     fn set_output_path(&mut self, output_path: String);
     fn close(&mut self);
@@ -16,13 +57,14 @@ pub trait Recorder {
 
 
 /// Prints the network and any to the console.
+#[derive(Deserialize, Clone)]
 pub struct DebugPrintRecorder;
 
 impl DebugPrintRecorder {
     pub fn new() -> Self { DebugPrintRecorder}
 }
 
-impl Recorder for DebugPrintRecorder {
+impl RecorderTrait for DebugPrintRecorder {
     fn record(
         &mut self,
         rd: usize,
@@ -51,7 +93,7 @@ impl Recorder for DebugPrintRecorder {
 
 
 /// Types of file recorders.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize)]
 pub enum FileRecorderType {
     AbsorptionCSV,
     BufferLoadCSV,
@@ -59,15 +101,18 @@ pub enum FileRecorderType {
 
 
 /// Write some aspect of the simulation state to a file.
+#[derive(Deserialize, Clone)]
 pub struct FileRecorder {
     recorder_type: FileRecorderType,
     lines: Vec<String>,
     // We require the output dir path to be set; optional so that Simulation::new() caller doesn't
     // have to construct and provide every individual file's output path.
+    #[serde(skip)]
     file_path: Option<String>,
 }
 
 impl FileRecorder {
+    /// Get a new `FileRecorder` of the given type.
     pub fn new(recorder_type: FileRecorderType) -> Self {
         FileRecorder {
             recorder_type,
@@ -115,7 +160,7 @@ impl FileRecorder {
     }
 }
 
-impl Recorder for FileRecorder {
+impl RecorderTrait for FileRecorder {
     fn close(&mut self) {
         self.save();
     }

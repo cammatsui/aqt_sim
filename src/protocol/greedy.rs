@@ -1,24 +1,27 @@
 //! This module contains implementations of greedy protocols.
 
+use serde::{ Serialize, Deserialize };
 use crate::network::{ NodeID, Network };
 use crate::packet::Packet;
-use crate::protocol::Protocol;
+use crate::protocol::ProtocolTrait;
 use std::cmp::min;
 
 
 /// The greedy FIFO protocol always forwards packets as many packets from a buffer as allowed by
 /// the protocol's capacity.
+#[derive(Serialize, Deserialize, Clone)]
 pub struct GreedyFIFO {
     capacity: usize,
 }
 
 impl GreedyFIFO {
+    /// Get a new `GreedyFIFO` struct.
     pub fn new(capacity: usize) -> Self {
         GreedyFIFO { capacity }
     }
 }
 
-impl Protocol for GreedyFIFO {
+impl ProtocolTrait for GreedyFIFO {
     fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet> {
         let mut absorbed = Vec::new();
         let mut packets_to_fwd = Vec::new();
@@ -48,7 +51,7 @@ impl GreedyFIFO {
         from_id: NodeID,
         to_id: NodeID,
         network: &mut Network
-    ) -> Vec<Packet> {
+        ) -> Vec<Packet> {
         let eb = network.get_edgebuffer_mut(from_id, to_id).unwrap();
         let num_to_fwd = min(self.capacity, eb.buffer.len());
         let mut packets_to_fwd = Vec::new();

@@ -62,7 +62,7 @@ impl Network {
     }
 
     // Get a `Vec<Vec<usize>>` which is adjacency lists of underlying graph.
-    pub fn get_graph_structure(&self) -> Vec<Vec<usize>> {
+    pub fn graph_structure(&self) -> Vec<Vec<usize>> {
         // eg:
         // [
         //  [3, 5],
