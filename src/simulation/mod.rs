@@ -147,4 +147,10 @@ impl SimulationConfig {
             eprintln!("Couldn't write to file {}", filepath);
         }
     }
+
+    /// Read a vector of `SimulationConfig`s from a file.
+    pub fn read_configs_from_file(&self, file_path: &str) -> Vec<SimulationConfig> {
+        let json = fs::read_to_string(file_path).unwrap();
+        serde_json::from_str(&json).unwrap()
+    }
 }
