@@ -13,7 +13,7 @@ const NUM_RDS: usize = 10;
 fn main() {
     let network = presets::construct_path(NUM_BUFFERS);
     let protocol = Protocol::OEDWithSwap(OEDWithSwap::new());
-    let adversary = Adversary::SDPathRandom(SDPathRandomAdversary::new());
+    let adversary = Adversary::SDPathRandom(SDPathRandomAdversary::from_seed(32));
     let threshold = Threshold::Timed(TimedThreshold::new(NUM_RDS));
 
     let recorders: Vec<Recorder> = vec![
