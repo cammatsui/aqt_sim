@@ -5,7 +5,7 @@
 use crate::adversary::Adversary;
 use crate::network::Network;
 use crate::protocol::Protocol;
-use crate::simulation::recorder::{DebugPrintRecorder, Recorder};
+use crate::simulation::recorder::Recorder;
 use crate::simulation::threshold::Threshold;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -80,7 +80,7 @@ impl Simulation {
         adversary: Adversary,
         threshold: Threshold,
     ) -> Self {
-        let recorders: Vec<Recorder> = vec![Recorder::DebugPrint(DebugPrintRecorder::new())];
+        let recorders: Vec<Recorder> = vec![Recorder::new_debug_print()];
         Simulation {
             network,
             protocol,

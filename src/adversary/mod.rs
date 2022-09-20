@@ -18,24 +18,27 @@ pub enum Adversary {
 }
 
 impl Adversary {
+    /// Create a new `SDPathRandomAdversary`.
+    pub fn new_sd_path_random() -> Self {
+        Self::SDPathRandom(SDPathRandomAdversary::new())
+    }
+
+    /// Create a new `SDPathRandomAdversary` with the given seed.
+    pub fn sd_path_random_from_seed(seed: u64) -> Self {
+        Self::SDPathRandom(SDPathRandomAdversary::from_seed(seed))
+    }
+
+    /// Create a new `PresetAdversary` from the given injection configs.
+    pub fn preset_from_injection_configs(to_inject: Vec<Vec<InjectionConfig>>) -> Self {
+        Self::Preset(PresetAdversary::from_injection_configs(to_inject))
+    }
+
     /// Get the next packets, through `AdversaryTrait`
     pub fn get_next_packets(&mut self, network: &Network, rd: usize) -> Vec<Packet> {
         match self {
             Self::SDPathRandom(a) => a.get_next_packets(network, rd),
             Self::Preset(a) => a.get_next_packets(network, rd),
         }
-    }
-
-    pub fn new_sd_path_random() -> Self {
-        Self::SDPathRandom(SDPathRandomAdversary::new())
-    }
-
-    pub fn sd_path_random_from_seed(seed: u64) -> Self {
-        Self::SDPathRandom(SDPathRandomAdversary::from_seed(seed))
-    }
-
-    pub fn preset_from_injection_configs(to_inject: Vec<Vec<InjectionConfig>>) -> Self {
-        Self::Preset(PresetAdversary::from_injection_configs(to_inject))
     }
 }
 

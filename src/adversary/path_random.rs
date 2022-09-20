@@ -48,9 +48,8 @@ impl AdversaryTrait for SDPathRandomAdversary {
             }
         };
 
-        let p = self
+        vec![self
             .factory
-            .create_packet((0..dest_id + 1).collect(), rd, src_id);
-        vec![p]
+            .create_packet((0..dest_id + 1).collect(), rd, src_id)]
     }
 }

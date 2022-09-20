@@ -15,10 +15,12 @@ pub enum Recorder {
 }
 
 impl Recorder {
+    /// Get a new `FileRecorder` from the given recorder type.
     pub fn file_recorder_from_type(recorder_type: FileRecorderType) -> Self {
         Recorder::File(FileRecorder::new(recorder_type))
     }
 
+    /// Get a new `DebugPrintRecorder`.
     pub fn new_debug_print() -> Self {
         Recorder::DebugPrint(DebugPrintRecorder::new())
     }
@@ -66,7 +68,7 @@ pub trait RecorderTrait {
 pub struct DebugPrintRecorder;
 
 impl DebugPrintRecorder {
-    pub fn new() -> Self {
+    fn new() -> Self {
         DebugPrintRecorder
     }
 }
@@ -124,7 +126,7 @@ pub struct FileRecorder {
 
 impl FileRecorder {
     /// Get a new `FileRecorder` of the given type.
-    pub fn new(recorder_type: FileRecorderType) -> Self {
+    fn new(recorder_type: FileRecorderType) -> Self {
         FileRecorder {
             recorder_type,
             lines: vec![Self::type_to_header(recorder_type).to_string()],
@@ -147,7 +149,7 @@ impl FileRecorder {
     }
 
     /// Write a line to the recorder.
-    pub fn write(&mut self, line: String) {
+    fn write(&mut self, line: String) {
         if self.lines.len() >= LINE_LIMIT {
             self.save();
             self.lines = Vec::new();
@@ -156,7 +158,7 @@ impl FileRecorder {
     }
 
     /// Save the lines to a file.
-    pub fn save(&mut self) {
+    fn save(&mut self) {
         let data = self.lines.concat();
         let file_path_unwrapped = self
             .file_path

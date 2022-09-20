@@ -20,6 +20,17 @@ pub enum Protocol {
 }
 
 impl Protocol {
+    /// Get a new `OEDWithSwap` protocol.
+    pub fn new_oed_with_swap() -> Self {
+        Self::OEDWithSwap(OEDWithSwap::new())
+    }
+
+    /// Get a new `GreedyFIFO` protocol.
+    pub fn new_greedy_fifo(capacity: usize) -> Self {
+        Self::GreedyFIFO(GreedyFIFO::new(capacity))
+    }
+
+    /// Add a packet to the given `Network` via `ProtocolTrait`.
     pub fn add_packet(&mut self, p: Packet, network: &mut Network) {
         match self {
             Self::GreedyFIFO(protocol) => protocol.add_packet(p, network),
@@ -27,19 +38,12 @@ impl Protocol {
         }
     }
 
+    /// Forward packets on the given `Network` via `ProtocolTrait`.
     pub fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet> {
         match self {
             Self::GreedyFIFO(protocol) => protocol.forward_packets(network),
             Self::OEDWithSwap(protocol) => protocol.forward_packets(network),
         }
-    }
-
-    pub fn new_oed_with_swap() -> Self {
-        Self::OEDWithSwap(OEDWithSwap::new())
-    }
-
-    pub fn new_greedy_fifo(capacity: usize) -> Self {
-        Self::GreedyFIFO(GreedyFIFO::new(capacity))
     }
 }
 

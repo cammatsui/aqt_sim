@@ -39,7 +39,7 @@ pub struct TimedThreshold {
 
 impl TimedThreshold {
     /// Create a new `TimedThreshold` with the given number of maximum rounds.
-    pub fn new(max_rds: usize) -> Self {
+    fn new(max_rds: usize) -> Self {
         TimedThreshold { max_rds }
     }
 }
