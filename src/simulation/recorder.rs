@@ -15,6 +15,14 @@ pub enum Recorder {
 }
 
 impl Recorder {
+    pub fn file_recorder_from_type(recorder_type: FileRecorderType) -> Self {
+        Recorder::File(FileRecorder::new(recorder_type))
+    }
+
+    pub fn new_debug_print() -> Self {
+        Recorder::DebugPrint(DebugPrintRecorder::new())
+    }
+
     /// Record the state of the `Simulation` via the `RecorderTrait`.
     pub fn record(
         &mut self,
@@ -75,12 +83,12 @@ impl RecorderTrait for DebugPrintRecorder {
             println!("{}':", rd)
         } else {
             println!("{}:", rd)
-        };
+        }
         println!("{}", network);
         if let Some(absorbed_packets) = absorbed {
             if absorbed_packets.len() == 0 {
                 return;
-            };
+            }
             println!("Absorbed Packets:");
             for packet in absorbed_packets {
                 println!("{:?}", packet);
@@ -202,7 +210,7 @@ impl RecorderTrait for FileRecorder {
             FileRecorderType::AbsorptionCSV => {
                 if !prime {
                     return;
-                };
+                }
                 for packet in absorbed.unwrap() {
                     self.write(format!(
                         "{},{},{}\n",

@@ -11,6 +11,10 @@ pub enum Threshold {
 }
 
 impl Threshold {
+    pub fn timed_from_rds(max_rds: usize) -> Self{
+        Self::Timed(TimedThreshold::new(max_rds))
+    }
+
     /// Check whether the `Simulation` should terminate based on the round number and network
     /// state.
     pub fn check_termination(&mut self, rd: usize, network: &Network) -> bool {

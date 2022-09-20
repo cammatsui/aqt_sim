@@ -1,25 +1,24 @@
-use aqt_sim::adversary::path_random::SDPathRandomAdversary;
 use aqt_sim::adversary::Adversary;
 use aqt_sim::network::presets;
-use aqt_sim::protocol::oed::OEDWithSwap;
 use aqt_sim::protocol::Protocol;
-use aqt_sim::simulation::recorder::{DebugPrintRecorder, FileRecorder, FileRecorderType, Recorder};
-use aqt_sim::simulation::threshold::{Threshold, TimedThreshold};
+use aqt_sim::simulation::recorder::{FileRecorderType, Recorder};
+use aqt_sim::simulation::threshold::Threshold;
 use aqt_sim::simulation::Simulation;
 
 const NUM_BUFFERS: usize = 10;
 const NUM_RDS: usize = 10;
+const SEED: u64 = 32;
 
 fn main() {
     let network = presets::construct_path(NUM_BUFFERS);
-    let protocol = Protocol::OEDWithSwap(OEDWithSwap::new());
-    let adversary = Adversary::SDPathRandom(SDPathRandomAdversary::from_seed(32));
-    let threshold = Threshold::Timed(TimedThreshold::new(NUM_RDS));
+    let protocol = Protocol::new_oed_with_swap();
+    let adversary = Adversary::sd_path_random_from_seed(SEED);
+    let threshold = Threshold::timed_from_rds(NUM_RDS);
 
     let recorders: Vec<Recorder> = vec![
-        Recorder::DebugPrint(DebugPrintRecorder::new()),
-        Recorder::File(FileRecorder::new(FileRecorderType::BufferLoadCSV)),
-        Recorder::File(FileRecorder::new(FileRecorderType::AbsorptionCSV)),
+        Recorder::new_debug_print(),
+        Recorder::file_recorder_from_type(FileRecorderType::BufferLoadCSV),
+        Recorder::file_recorder_from_type(FileRecorderType::AbsorptionCSV),
     ];
     let mut simulation = Simulation::new(
         network,

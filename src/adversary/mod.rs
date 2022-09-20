@@ -1,8 +1,8 @@
 //! This module contains all implementations of adversaries, which determine where Packets are
 //! injected into the network.
 
-use self::path_random::SDPathRandomAdversary;
 use self::preset::PresetAdversary;
+use self::{path_random::SDPathRandomAdversary, preset::InjectionConfig};
 use crate::network::Network;
 use crate::packet::Packet;
 use serde::{Deserialize, Serialize};
@@ -24,6 +24,18 @@ impl Adversary {
             Self::SDPathRandom(a) => a.get_next_packets(network, rd),
             Self::Preset(a) => a.get_next_packets(network, rd),
         }
+    }
+
+    pub fn new_sd_path_random() -> Self {
+        Self::SDPathRandom(SDPathRandomAdversary::new())
+    }
+
+    pub fn sd_path_random_from_seed(seed: u64) -> Self {
+        Self::SDPathRandom(SDPathRandomAdversary::from_seed(seed))
+    }
+
+    pub fn preset_from_injection_configs(to_inject: Vec<Vec<InjectionConfig>>) -> Self {
+        Self::Preset(PresetAdversary::from_injection_configs(to_inject))
     }
 }
 

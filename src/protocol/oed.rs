@@ -26,10 +26,10 @@ impl ProtocolTrait for OEDWithSwap {
         for _ in 0..num_to_fwd_and_bwd {
             let p = to_fwd_and_bwd.remove(0);
             if !p.should_be_absorbed() {
-                self.add_packet(p, network);
+                self.add_packet(p, network)
             } else {
-                absorbed.push(p);
-            }
+                absorbed.push(p)
+            };
         }
         absorbed
     }
@@ -43,15 +43,11 @@ impl OEDWithSwap {
         let num_nodes = network.get_num_nodes();
         for from_id in 0..num_nodes - 1 {
             let to_id = from_id + 1;
-            if network
-                .get_edgebuffer_mut(from_id, to_id)
-                .unwrap()
-                .buffer
-                .len()
-                == 0
-            {
+            let eb = network.get_edgebuffer_mut(from_id, to_id).unwrap();
+            let load = eb.buffer.len();
+            if load == 0 {
                 continue;
-            };
+            }
             let (forward, backward) = forward_or_backward[from_id];
             if forward {
                 let o_idx = self.get_oldest_packet_idx(from_id, to_id, network).unwrap();
@@ -86,7 +82,7 @@ impl OEDWithSwap {
         let load = eb.buffer.len();
         if load == 0 {
             return None;
-        };
+        }
 
         let o_idx = self.get_oldest_packet_idx(from_id, to_id, network).unwrap();
         let y_idx = self
@@ -110,7 +106,7 @@ impl OEDWithSwap {
         let load = eb.buffer.len();
         if load == 0 {
             return None;
-        };
+        }
 
         let mut oldest_injection_rd = usize::MAX;
         let mut oldest_injection_idx = 0;
@@ -137,7 +133,7 @@ impl OEDWithSwap {
         let load = eb.buffer.len();
         if load == 0 {
             return None;
-        };
+        }
 
         let mut youngest_injection_rd = 0;
         let mut youngest_injection_idx = 0;
@@ -161,25 +157,15 @@ impl OEDWithSwap {
         let mut oed_criterion = Vec::new();
         let num_nodes = network.get_num_nodes();
         for from_id in 0..num_nodes - 2 {
-            let this_load = network
-                .get_edgebuffer(from_id, from_id + 1)
-                .unwrap()
-                .buffer
-                .len();
-            let next_load = network
-                .get_edgebuffer(from_id + 1, from_id + 2)
-                .unwrap()
-                .buffer
-                .len();
+            let this_eb = network.get_edgebuffer(from_id, from_id + 1).unwrap();
+            let this_load = this_eb.buffer.len();
+            let next_eb = network.get_edgebuffer(from_id + 1, from_id + 2).unwrap();
+            let next_load = next_eb.buffer.len();
             let oed = this_load > next_load || (this_load == next_load && this_load % 2 == 1);
             oed_criterion.push(oed);
         }
-        let last_nonempty = network
-            .get_edgebuffer(num_nodes - 2, num_nodes - 1)
-            .unwrap()
-            .buffer
-            .len()
-            != 0;
+        let maybe_last_eb = network.get_edgebuffer(num_nodes - 2, num_nodes - 1);
+        let last_nonempty = maybe_last_eb.unwrap().buffer.len() > 0;
         oed_criterion.push(last_nonempty);
 
         // Get max/min ages of buffers.

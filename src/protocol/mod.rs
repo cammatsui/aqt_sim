@@ -33,16 +33,23 @@ impl Protocol {
             Self::OEDWithSwap(protocol) => protocol.forward_packets(network),
         }
     }
+
+    pub fn new_oed_with_swap() -> Self {
+        Self::OEDWithSwap(OEDWithSwap::new())
+    }
+
+    pub fn new_greedy_fifo(capacity: usize) -> Self {
+        Self::GreedyFIFO(GreedyFIFO::new(capacity))
+    }
 }
 
 /// Trait which all `Protocol`s must implement.
 pub trait ProtocolTrait {
     /// Add a `Packet` to the network.
     fn add_packet(&mut self, p: Packet, network: &mut Network) {
-        let eb = network
-            .get_edgebuffer_mut(p.cur_node().unwrap(), p.next_node().unwrap())
-            .unwrap();
-        // NOTE: We need to push to the back as some of the protocols depend on this.
+        let cur = p.cur_node().unwrap();
+        let next = p.next_node().unwrap();
+        let eb = network.get_edgebuffer_mut(cur, next).unwrap();
         eb.buffer.push(p);
     }
 

@@ -112,9 +112,10 @@ impl Simulation {
             for recorder in &mut self.recorders {
                 recorder.record(rd, true, &self.network, Some(&absorbed));
             }
+
             if self.threshold.check_termination(rd, &self.network) {
                 break;
-            };
+            }
             rd += 1;
         }
         for recorder in &mut self.recorders {
