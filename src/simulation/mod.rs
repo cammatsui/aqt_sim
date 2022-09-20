@@ -2,18 +2,17 @@
 //! `Recorder` trait and its implementations, which "records" snapshots of the simulation, and the
 //! `Threshold` trait and its implementations, which determines when to stop the simulation.
 
-use std::fs;
-use std::io::prelude::*;
-use serde::{ Serialize, Deserialize };
+use crate::adversary::Adversary;
 use crate::network::Network;
 use crate::protocol::Protocol;
-use crate::adversary::Adversary;
+use crate::simulation::recorder::{DebugPrintRecorder, Recorder};
 use crate::simulation::threshold::Threshold;
-use crate::simulation::recorder::{ Recorder, DebugPrintRecorder };
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::io::prelude::*;
 
-pub mod threshold;
 pub mod recorder;
-
+pub mod threshold;
 
 /// Stores all data related to a run of a simulation, including the `Network`, `Protocol`, and
 /// `Adversary`.
@@ -49,7 +48,7 @@ impl Simulation {
             output_path,
         }
     }
-    
+
     /// Create a new `Simulation`. Use this to run non-debug sims.
     pub fn new(
         network: Network,
@@ -59,7 +58,13 @@ impl Simulation {
         recorders: Vec<Recorder>,
         output_path: String,
     ) -> Self {
-        let mut new_sim = Simulation { network, protocol, adversary, threshold, recorders };
+        let mut new_sim = Simulation {
+            network,
+            protocol,
+            adversary,
+            threshold,
+            recorders,
+        };
         // TODO: save sim details to json with serde. For now just save network.
         new_sim.save_config(&output_path);
         for recorder in &mut new_sim.recorders {
@@ -76,7 +81,13 @@ impl Simulation {
         threshold: Threshold,
     ) -> Self {
         let recorders: Vec<Recorder> = vec![Recorder::DebugPrint(DebugPrintRecorder::new())];
-        Simulation { network, protocol, adversary, threshold, recorders }
+        Simulation {
+            network,
+            protocol,
+            adversary,
+            threshold,
+            recorders,
+        }
     }
 
     /// Run the simulation for the given number of rounds.
@@ -97,14 +108,18 @@ impl Simulation {
 
             // Forward.
             let absorbed = self.protocol.forward_packets(&mut self.network);
-            
+
             for recorder in &mut self.recorders {
                 recorder.record(rd, true, &self.network, Some(&absorbed));
             }
-            if self.threshold.check_termination(rd, &self.network) { break };
+            if self.threshold.check_termination(rd, &self.network) {
+                break;
+            };
             rd += 1;
         }
-        for recorder in &mut self.recorders { recorder.close() }
+        for recorder in &mut self.recorders {
+            recorder.close()
+        }
     }
 
     fn save_config(&self, output_path: &str) {
@@ -112,7 +127,6 @@ impl Simulation {
         config.save_to_file(output_path);
     }
 }
-
 
 /// Represents a configuration for a `Simulation` struct.
 #[derive(Serialize, Deserialize)]
@@ -132,11 +146,10 @@ impl SimulationConfig {
     /// Save this config to the given file.
     pub fn save_to_file(&self, output_path: &str) {
         let data = serde_json::to_string_pretty(&self).unwrap();
-        fs::create_dir_all(output_path.clone())
-            .expect("Failed to save simulation results.");
+        fs::create_dir_all(output_path.clone()).expect("Failed to save simulation results.");
         let mut filepath = String::from(output_path);
         filepath.push_str(&format!("/{}", Self::SIM_CONFIG_FILENAME));
-        
+
         let mut file = fs::OpenOptions::new()
             .write(true)
             .create(true)

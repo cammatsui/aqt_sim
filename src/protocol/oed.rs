@@ -1,10 +1,9 @@
 //! This module contains implementations of OED protocols.
 
-use serde::{ Serialize, Deserialize };
-use crate::network::{ Network, NodeID };
+use crate::network::{Network, NodeID};
 use crate::packet::Packet;
 use crate::protocol::ProtocolTrait;
-
+use serde::{Deserialize, Serialize};
 
 /// In the OED With Swap protocol, we forward the oldest packet from buffer x if x and x+1 fulfill
 /// the OED criterion or the oldest packet in x is older than the youngest in x+1, and send the

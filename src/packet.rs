@@ -2,9 +2,8 @@
 //! Packet struct itself as well as a PacketFactory and PacketPath (which is just a vector of
 //! NodeIDs determining the route the Packet should follow).
 
-use std::fmt;
 use crate::network::NodeID;
-
+use std::fmt;
 
 /// The `Packet` struct represents a packet in AQT. It includes:
 /// - An id, which is unique,
@@ -28,7 +27,7 @@ impl Packet {
         self.id
     }
 
-    /// Increment the index into the `PacketPath`. We need to keep this in sync with the packet's 
+    /// Increment the index into the `PacketPath`. We need to keep this in sync with the packet's
     /// state in the `Network` so we can quickly forward packets.
     pub fn increment_path_idx(&mut self) {
         if self.is_absorbed() {
@@ -37,7 +36,7 @@ impl Packet {
         self.path_idx += 1;
     }
 
-    /// Decrement the index into the `PacketPath`. We need to keep this in sync with the packet's 
+    /// Decrement the index into the `PacketPath`. We need to keep this in sync with the packet's
     /// state in the `Network` so we can quickly forward packets.
     pub fn decrement_path_idx(&mut self) {
         if self.path_idx == 0 {
@@ -53,7 +52,7 @@ impl Packet {
 
     /// Check whether this packet should be absorbed the next time it is forwarded.
     pub fn should_be_absorbed(&self) -> bool {
-        self.path_idx == self.path.len()-1
+        self.path_idx == self.path.len() - 1
     }
 
     /// Get the injection round of this `Packet`.
@@ -70,8 +69,8 @@ impl Packet {
         }
     }
 
-    /// Get the id of the next `Node` that this packet will occupy if forwarded in its path. 
-    /// Returns `None` if the packet has been absorbed or is about to be absorbed. 
+    /// Get the id of the next `Node` that this packet will occupy if forwarded in its path.
+    /// Returns `None` if the packet has been absorbed or is about to be absorbed.
     pub fn next_node(&self) -> Option<NodeID> {
         match self.path.get(self.path_idx + 1) {
             Some(next_id) => Some(*next_id),
@@ -117,7 +116,6 @@ impl PartialEq for Packet {
     }
 }
 
-
 /// This struct allows for the creation of `Packet`s with unique ids. We thus require all `Packet`s
 /// to be created through a `PacketFactory`.
 #[derive(Default, Clone)]
@@ -138,18 +136,19 @@ impl PacketFactory {
         injection_rd: usize,
         path_idx: usize,
     ) -> Packet {
-        let p = Packet {id: self.cur_id, path, path_idx, injection_rd };
+        let p = Packet {
+            id: self.cur_id,
+            path,
+            path_idx,
+            injection_rd,
+        };
         self.cur_id += 1;
         p
     }
 }
 
-
-
-
 /// The path of `Node`s that a `Packet` will take through a `Network`.
 pub type PacketPath = Vec<NodeID>;
-
 
 #[cfg(test)]
 mod tests {
@@ -182,9 +181,8 @@ mod tests {
         assert_eq!(p.cur_node(), None);
         assert_eq!(p.next_node(), None);
         assert!(p.is_absorbed());
-        
+
         // Should panic here; we don't want to allow iteration if the packet is already absorbed.
         p.increment_path_idx();
     }
-
 }

@@ -1,11 +1,11 @@
-use aqt_sim::protocol::oed::OEDWithSwap;
-use aqt_sim::simulation::Simulation;
-use aqt_sim::network::presets;
-use aqt_sim::protocol::Protocol;
-use aqt_sim::adversary::Adversary;
-use aqt_sim::simulation::threshold::{ Threshold, TimedThreshold };
-use aqt_sim::simulation::recorder::{ Recorder, DebugPrintRecorder, FileRecorder, FileRecorderType };
 use aqt_sim::adversary::path_random::SDPathRandomAdversary;
+use aqt_sim::adversary::Adversary;
+use aqt_sim::network::presets;
+use aqt_sim::protocol::oed::OEDWithSwap;
+use aqt_sim::protocol::Protocol;
+use aqt_sim::simulation::recorder::{DebugPrintRecorder, FileRecorder, FileRecorderType, Recorder};
+use aqt_sim::simulation::threshold::{Threshold, TimedThreshold};
+use aqt_sim::simulation::Simulation;
 
 const NUM_BUFFERS: usize = 10;
 const NUM_RDS: usize = 10;
@@ -21,8 +21,13 @@ fn main() {
         Recorder::File(FileRecorder::new(FileRecorderType::BufferLoadCSV)),
         Recorder::File(FileRecorder::new(FileRecorderType::AbsorptionCSV)),
     ];
-    let mut simulation = Simulation::new(network, protocol, adversary, threshold, recorders, "/home/cammatsui/Dev/aqt_sim/output".to_string());
+    let mut simulation = Simulation::new(
+        network,
+        protocol,
+        adversary,
+        threshold,
+        recorders,
+        "/home/cammatsui/Dev/aqt_sim/output".to_string(),
+    );
     simulation.run();
 }
-
-

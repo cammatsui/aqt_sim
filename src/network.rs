@@ -1,12 +1,11 @@
 //! This module contains types related to the underlying graph data structure and buffers. All of
 //! these types are wrapped by the `Network` struct. Access to and modification of the network is
-//! done via `NodeID`s, indices into the network's `Node` vector, where nodes are referenced by 
+//! done via `NodeID`s, indices into the network's `Node` vector, where nodes are referenced by
 //! IDs and `EdgeBuffers` are referenced by pairs of from- and to-IDs.
 
-use hashbrown::HashMap;
 use crate::packet::Packet;
+use hashbrown::HashMap;
 use std::fmt;
-
 
 /// The `Network` struct wraps the underlying graph data structure and manages the buffers of
 /// packets. The struct offers the following interface:
@@ -50,7 +49,9 @@ impl Network {
     /// Create a `Network` from the given adjacency lists.
     pub fn from_graph_structure(structure: Vec<Vec<usize>>) -> Self {
         let mut network = Self::new();
-        for _ in 0..structure.len() { network.add_node(); }
+        for _ in 0..structure.len() {
+            network.add_node();
+        }
         for node_id in 0..structure.len() {
             let neighbors = &structure[node_id];
             let _: Vec<()> = neighbors
@@ -79,7 +80,6 @@ impl Network {
         adj_vecs
     }
 
-
     /// Add a new `Node` to the network.
     pub fn add_node(&mut self) -> NodeID {
         let node_id = self.nodes.len();
@@ -95,7 +95,10 @@ impl Network {
 
         let from_node: &mut Node = &mut self.nodes[from_id];
         if from_node.contains_key(&to_id) {
-            panic!("There is already an EdgeBuffer between nodes {} and {}", from_id, to_id);
+            panic!(
+                "There is already an EdgeBuffer between nodes {} and {}",
+                from_id, to_id
+            );
         }
 
         from_node.insert(to_id, EdgeBuffer::new());
@@ -128,12 +131,12 @@ impl Network {
         for from_id in 0..self.nodes.len() {
             for to_id in self.get_neighbors(from_id) {
                 result.push((from_id, to_id))
-            } 
+            }
         }
         result
     }
 
-    /// Add the given `Packet` to the specified `Buffer`. Returns `None` if there is no 
+    /// Add the given `Packet` to the specified `Buffer`. Returns `None` if there is no
     /// `EdgeBuffer` corresponding to the given from- and to-IDs.
     pub fn add_packet(&mut self, p: Packet, from_id: NodeID, to_id: NodeID) {
         match self.get_edgebuffer_mut(from_id, to_id) {
@@ -142,7 +145,7 @@ impl Network {
         }
     }
 
-    /// Get an immutable reference to the specified `Buffer`. Returns `None` if there is no 
+    /// Get an immutable reference to the specified `Buffer`. Returns `None` if there is no
     /// `EdgeBuffer` corresponding to the given from- and to-IDs.
     pub fn get_edgebuffer(&self, from_id: NodeID, to_id: NodeID) -> Option<&EdgeBuffer> {
         self.check_node_id(from_id);
@@ -153,12 +156,12 @@ impl Network {
         }
     }
 
-    /// Get an mutable reference to the specified `Buffer`. Returns `None` if there is no 
+    /// Get an mutable reference to the specified `Buffer`. Returns `None` if there is no
     /// `EdgeBuffer` corresponding to the given from- and to-NodeIDs.
     pub fn get_edgebuffer_mut(
         &mut self,
         from_id: NodeID,
-        to_id: NodeID
+        to_id: NodeID,
     ) -> Option<&mut EdgeBuffer> {
         self.check_node_id(from_id);
         self.check_node_id(to_id);
@@ -168,7 +171,7 @@ impl Network {
         }
     }
 
-    /// Get (and take ownership of) the specified `Buffer`. Returns `None` if there is no 
+    /// Get (and take ownership of) the specified `Buffer`. Returns `None` if there is no
     /// `EdgeBuffer` corresponding to the given from- and to-IDs.
     pub fn take_buffer(&mut self, from_id: NodeID, to_id: NodeID) -> Option<Buffer> {
         self.check_node_id(from_id);
@@ -195,18 +198,15 @@ impl fmt::Display for Network {
         let mut result = String::new();
         let edgebuffer_ids = self.get_edgebuffers();
         for (from_id, to_id) in edgebuffer_ids {
-            let buffer = &self.get_edgebuffer(from_id, to_id).unwrap()
-                .buffer;
+            let buffer = &self.get_edgebuffer(from_id, to_id).unwrap().buffer;
             result.push_str(&format!("{}, {}: {:?}\n", from_id, to_id, buffer));
         }
         write!(f, "{}", result)
     }
 }
 
-
 /// Just a map of outgoing `EdgeBuffer`s.
 pub type Node = HashMap<NodeID, EdgeBuffer>;
-
 
 /// An `EdgeBuffer` represents an edge in the graph with an associated `Buffer` (just a vector of
 /// `Packet`s).
@@ -222,14 +222,12 @@ impl EdgeBuffer {
     }
 }
 
-
-/// A `NodeID` uniquely specifies a `Node` in the network. These IDs are also used, in pairs, to 
+/// A `NodeID` uniquely specifies a `Node` in the network. These IDs are also used, in pairs, to
 /// uniquely specify `EdgeBuffer`s in the network..
 pub type NodeID = usize;
 
 /// Just a vector of `Packet`s.
 pub type Buffer = Vec<Packet>;
-
 
 pub mod presets {
     //! This module contains functions to create preset network structures.
@@ -242,14 +240,13 @@ pub mod presets {
             network.add_node();
         }
 
-        for buff_id in 0..num_buffers-1 {
-            network.add_edgebuffer(buff_id, buff_id+1);
+        for buff_id in 0..num_buffers - 1 {
+            network.add_edgebuffer(buff_id, buff_id + 1);
         }
 
         network
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -289,13 +286,20 @@ mod tests {
         let expect_b_neighbors = vec![c_id, d_id];
         let expect_c_neighbors = vec![b_id];
         let expect_d_neighbors: Vec<NodeID> = vec![];
-        
-        assert!(a_neighbors.into_iter().all(|neighbor| expect_a_neighbors.contains(&neighbor)));
-        assert!(b_neighbors.into_iter().all(|neighbor| expect_b_neighbors.contains(&neighbor)));
-        assert!(c_neighbors.into_iter().all(|neighbor| expect_c_neighbors.contains(&neighbor)));
-        assert!(d_neighbors.into_iter().all(|neighbor| expect_d_neighbors.contains(&neighbor)));
-    }
 
+        assert!(a_neighbors
+            .into_iter()
+            .all(|neighbor| expect_a_neighbors.contains(&neighbor)));
+        assert!(b_neighbors
+            .into_iter()
+            .all(|neighbor| expect_b_neighbors.contains(&neighbor)));
+        assert!(c_neighbors
+            .into_iter()
+            .all(|neighbor| expect_c_neighbors.contains(&neighbor)));
+        assert!(d_neighbors
+            .into_iter()
+            .all(|neighbor| expect_d_neighbors.contains(&neighbor)));
+    }
 
     #[test]
     #[should_panic]
@@ -309,7 +313,9 @@ mod tests {
         let network = setup_test_graph();
         let node_ids = network.get_nodes();
         let expect_node_ids = vec![0, 1, 2, 3];
-        assert!(node_ids.into_iter().all(|node_id| expect_node_ids.contains(&node_id)));
+        assert!(node_ids
+            .into_iter()
+            .all(|node_id| expect_node_ids.contains(&node_id)));
     }
 
     #[test]
@@ -325,7 +331,9 @@ mod tests {
             (a_id, d_id),
             (b_id, d_id),
         ];
-        assert!(eb_ids.into_iter().all(|eb_id_pair| expect_eb_ids.contains(&eb_id_pair)))
+        assert!(eb_ids
+            .into_iter()
+            .all(|eb_id_pair| expect_eb_ids.contains(&eb_id_pair)))
     }
 
     #[test]
@@ -336,7 +344,7 @@ mod tests {
         let p = factory.create_packet(Vec::new(), 0, 0);
         let p2 = p.clone();
 
-        { 
+        {
             let eb = network.get_edgebuffer(a_id, b_id).unwrap();
             assert!(!eb.buffer.contains(&p2));
         }
@@ -354,7 +362,7 @@ mod tests {
         let p = factory.create_packet(Vec::new(), 0, 0);
         let p2 = p.clone();
         network.add_packet(p, b_id, d_id);
-        
+
         let buff = network.take_buffer(b_id, d_id).unwrap();
         assert!(buff.contains(&p2));
 

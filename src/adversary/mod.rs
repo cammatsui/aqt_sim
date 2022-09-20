@@ -1,15 +1,14 @@
 //! This module contains all implementations of adversaries, which determine where Packets are
 //! injected into the network.
 
-use serde::{ Serialize, Deserialize };
-use crate::packet::Packet;
-use crate::network::Network;
 use self::path_random::SDPathRandomAdversary;
 use self::preset::PresetAdversary;
+use crate::network::Network;
+use crate::packet::Packet;
+use serde::{Deserialize, Serialize};
 
 pub mod path_random;
 pub mod preset;
-
 
 /// Enum to store all adversaries.
 #[derive(Serialize, Deserialize, Clone)]
@@ -27,7 +26,6 @@ impl Adversary {
         }
     }
 }
-
 
 /// Trait which all adversaries must implement.
 pub trait AdversaryTrait {

@@ -1,12 +1,11 @@
-use std::fs;
-use std::io::prelude::*;
-use serde::Deserialize;
 use crate::network::Network;
 use crate::packet::Packet;
+use serde::Deserialize;
+use std::fs;
+use std::io::prelude::*;
 
 // For CSV/file writing, how many lines to keep in memory before writing to disk.
 const LINE_LIMIT: usize = 5000;
-
 
 /// Enum for all `Recorder`s.
 #[derive(Deserialize, Clone)]
@@ -47,7 +46,6 @@ impl Recorder {
     }
 }
 
-
 /// Trait implemented by all recorders.
 pub trait RecorderTrait {
     fn record(&mut self, rd: usize, prime: bool, network: &Network, absorbed: Option<&Vec<Packet>>);
@@ -55,13 +53,14 @@ pub trait RecorderTrait {
     fn close(&mut self);
 }
 
-
 /// Prints the network and any to the console.
 #[derive(Deserialize, Clone)]
 pub struct DebugPrintRecorder;
 
 impl DebugPrintRecorder {
-    pub fn new() -> Self { DebugPrintRecorder}
+    pub fn new() -> Self {
+        DebugPrintRecorder
+    }
 }
 
 impl RecorderTrait for DebugPrintRecorder {
@@ -72,10 +71,16 @@ impl RecorderTrait for DebugPrintRecorder {
         network: &Network,
         absorbed: Option<&Vec<Packet>>,
     ) {
-        if prime { println!("{}':", rd) } else { println!("{}:", rd) };
+        if prime {
+            println!("{}':", rd)
+        } else {
+            println!("{}:", rd)
+        };
         println!("{}", network);
         if let Some(absorbed_packets) = absorbed {
-            if absorbed_packets.len() == 0 { return };
+            if absorbed_packets.len() == 0 {
+                return;
+            };
             println!("Absorbed Packets:");
             for packet in absorbed_packets {
                 println!("{:?}", packet);
@@ -88,9 +93,8 @@ impl RecorderTrait for DebugPrintRecorder {
         println!("Simulation finished.");
     }
 
-    fn set_output_path(&mut self, _output_path: String) { }
+    fn set_output_path(&mut self, _output_path: String) {}
 }
-
 
 /// Types of file recorders.
 #[derive(Clone, Copy, Deserialize)]
@@ -98,7 +102,6 @@ pub enum FileRecorderType {
     AbsorptionCSV,
     BufferLoadCSV,
 }
-
 
 /// Write some aspect of the simulation state to a file.
 #[derive(Deserialize, Clone)]
@@ -147,15 +150,26 @@ impl FileRecorder {
     /// Save the lines to a file.
     pub fn save(&mut self) {
         let data = self.lines.concat();
-        let file_path_unwrapped = self.file_path.as_ref()
+        let file_path_unwrapped = self
+            .file_path
+            .as_ref()
             .expect("You must set an output path for each recorder.");
 
         let mut file = fs::OpenOptions::new()
-            .write(true).create(true).append(true).open(&file_path_unwrapped)
-            .expect(&format!("Failed to save simulation results to {}", file_path_unwrapped));
+            .write(true)
+            .create(true)
+            .append(true)
+            .open(&file_path_unwrapped)
+            .expect(&format!(
+                "Failed to save simulation results to {}",
+                file_path_unwrapped
+            ));
 
         if let Err(_) = writeln!(file, "{}", data) {
-            eprintln!("Failed to save simulation results to {}", file_path_unwrapped);
+            eprintln!(
+                "Failed to save simulation results to {}",
+                file_path_unwrapped
+            );
         }
     }
 }
@@ -166,8 +180,10 @@ impl RecorderTrait for FileRecorder {
     }
 
     fn set_output_path(&mut self, dir_path: String) {
-        fs::create_dir_all(dir_path.clone())
-            .expect(&format!("Failed to save simulation results to {}", &dir_path));
+        fs::create_dir_all(dir_path.clone()).expect(&format!(
+            "Failed to save simulation results to {}",
+            &dir_path
+        ));
 
         let mut file_path = String::from(dir_path);
         file_path.push('/');
@@ -184,7 +200,9 @@ impl RecorderTrait for FileRecorder {
     ) {
         match self.recorder_type {
             FileRecorderType::AbsorptionCSV => {
-                if !prime { return };
+                if !prime {
+                    return;
+                };
                 for packet in absorbed.unwrap() {
                     self.write(format!(
                         "{},{},{}\n",
@@ -193,14 +211,15 @@ impl RecorderTrait for FileRecorder {
                         packet.get_injection_rd()
                     ));
                 }
-            },
+            }
             FileRecorderType::BufferLoadCSV => {
                 let prime_flag = if prime { 1 } else { 0 };
                 for (from_id, to_id) in network.get_edgebuffers() {
                     let load = network.get_edgebuffer(from_id, to_id).unwrap().buffer.len();
-                    self.write(
-                        format!("{},{},{},{},{}\n", rd, prime_flag, from_id, to_id, load),
-                    );
+                    self.write(format!(
+                        "{},{},{},{},{}\n",
+                        rd, prime_flag, from_id, to_id, load
+                    ));
                 }
             }
         }
