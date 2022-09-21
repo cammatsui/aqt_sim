@@ -10,6 +10,8 @@ use crate::protocol::Protocol;
 use crate::simulation::recorder::Recorder;
 use crate::simulation::threshold::Threshold;
 use serde_json::{Map, Value};
+use std::fs;
+use std::io::prelude::*;
 
 pub mod random;
 pub mod recorder;
@@ -25,6 +27,8 @@ pub struct Simulation {
     recorders: Vec<Recorder>,
     output_path: String,
 }
+
+const SIM_CONFIG_FILENAME: &str = "sim_config.json";
 
 impl Simulation {
     /// Create a new `Simulation`. Use this to run non-debug sims.
@@ -42,9 +46,9 @@ impl Simulation {
             adversary,
             threshold,
             recorders,
-            output_path,
+            output_path: output_path.clone(),
         };
-        //new_sim.save_config(&output_path);
+        new_sim.save_config(&output_path);
         for recorder in &mut new_sim.recorders {
             recorder.set_output_path(output_path.clone())
         }
@@ -53,8 +57,14 @@ impl Simulation {
 
     /// Create a new `Simulation` from the provided `SimConfig`.
     pub fn from_config(cfg: SimConfig) -> Self {
-        let mut recorders = cfg.recorder_cfgs.as_array().unwrap().iter()
-            .map(|c| Recorder::from_config(c.clone()).unwrap()).collect();
+        let recorders = cfg
+            .recorder_cfgs
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| Recorder::from_config(c.clone()).unwrap())
+            .collect();
+
         Simulation::new(
             Network::from_config(cfg.graph_adjacency).unwrap(),
             Protocol::from_config(cfg.protocol_cfg).unwrap(),
@@ -102,16 +112,43 @@ impl Simulation {
         let mut map = Map::new();
         map.insert(config::ADJACENCY_KEY.to_string(), self.network.to_config());
         map.insert(config::PROTOCOL_KEY.to_string(), self.protocol.to_config());
-        map.insert(config::ADVERSARY_KEY.to_string(), self.adversary.to_config());
-        map.insert(config::THRESHOLD_KEY.to_string(), self.adversary.to_config());
+        map.insert(
+            config::ADVERSARY_KEY.to_string(),
+            self.adversary.to_config(),
+        );
+        map.insert(
+            config::THRESHOLD_KEY.to_string(),
+            self.threshold.to_config(),
+        );
         let recorder_cfgs = self.recorders.iter().map(|r| r.to_config()).collect();
-        map.insert(config::RECORDERS_KEY.to_string(), Value::Array(recorder_cfgs));
-        serde_json::to_string(&Value::Object(map)).unwrap()
+        map.insert(
+            config::RECORDERS_KEY.to_string(),
+            Value::Array(recorder_cfgs),
+        );
+        map.insert(
+            config::OUTPUT_PATH_KEY.to_string(),
+            Value::String(self.output_path.clone()),
+        );
+        serde_json::to_string_pretty(&Value::Object(map)).unwrap()
     }
 
+    fn save_config(&self, output_path: &str) {
+        let data = self.to_config_str();
+        fs::create_dir_all(output_path).unwrap();
+        let file_path = format!("{}/{}", output_path, SIM_CONFIG_FILENAME);
 
-    /*fn save_config(&self, output_path: &str) {
-        let config = self.to_config(String::from(output_path));
-        config.save_to_file(output_path);
-    }*/
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&file_path)
+            .expect(&format!(
+                "Failed to save simulation config to {}",
+                file_path
+            ));
+
+        if let Err(_) = writeln!(file, "{}", data) {
+            eprintln!("Failed to save simulation config to {}", file_path);
+        }
+    }
 }

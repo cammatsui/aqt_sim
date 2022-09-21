@@ -1,19 +1,19 @@
 //! This module contains the `Threshold` trait and its implementations, which determine when a
 //! `Simulation` should stop running.
 
-use crate::config::{Configurable, CfgErrorMsg};
-use serde_json::{Map, Value, Number};
+use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::Network;
-use serde::{Deserialize, Serialize};
+use serde_json::{Map, Number, Value};
 
 /// Used to end a `Simulation`.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Threshold {
     Timed(TimedThreshold),
 }
 
 impl Threshold {
-    pub fn timed_from_rds(max_rds: usize) -> Self{
+    /// Get a `TimedThreshold` with the given max number of rounds.
+    pub fn timed_from_rds(max_rds: usize) -> Self {
         Self::Timed(TimedThreshold::new(max_rds))
     }
 
@@ -35,18 +35,18 @@ impl Configurable for Threshold {
         let map: Map<String, Value> = config.as_object().unwrap().clone();
         let threshold_name = match map.get(THRESHOLD_NAME_KEY) {
             Some(Value::String(name)) => Ok(name),
-            _ => Err(String::from("No threshold name found."))
+            _ => Err(String::from("No threshold name found.")),
         }?;
 
-        match threshold_name {
-            other_TIMED_THRESHOLD_NAME => Ok(Self::Timed(TimedThreshold::from_config(config).unwrap())),
-            _ => Err(String::from("No threshold name found."))
+        match &threshold_name[..] {
+            TIMED_THRESHOLD_NAME => Ok(Self::Timed(TimedThreshold::from_config(config).unwrap())),
+            _ => Err(String::from("No threshold name found.")),
         }
     }
 
     fn to_config(&self) -> Value {
         match self {
-            Self::Timed(t) => t.to_config()
+            Self::Timed(t) => t.to_config(),
         }
     }
 }
@@ -59,7 +59,7 @@ pub trait ThresholdTrait {
 }
 
 /// To end a `Simulation` after a specified number of rounds has elapsed.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct TimedThreshold {
     max_rds: usize,
 }
@@ -84,15 +84,21 @@ impl Configurable for TimedThreshold {
         let map: Map<String, Value> = config.as_object().unwrap().clone();
         let max_rds = match map.get(MAX_RDS_KEY) {
             Some(Value::Number(num)) => Ok(num.as_u64().unwrap() as usize),
-            _ => Err("No max rounds found.")
+            _ => Err("No max rounds found."),
         }?;
         Ok(Self { max_rds })
     }
 
     fn to_config(&self) -> Value {
         let mut map = Map::new();
-        map.insert(THRESHOLD_NAME_KEY.to_string(), Value::String(TIMED_THRESHOLD_NAME.to_string()));
-        map.insert(MAX_RDS_KEY.to_string(), Value::Number(Number::from(self.max_rds)));
+        map.insert(
+            THRESHOLD_NAME_KEY.to_string(),
+            Value::String(TIMED_THRESHOLD_NAME.to_string()),
+        );
+        map.insert(
+            MAX_RDS_KEY.to_string(),
+            Value::Number(Number::from(self.max_rds)),
+        );
 
         Value::Object(map)
     }

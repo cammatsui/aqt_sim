@@ -2,7 +2,7 @@
 //! injected into the network.
 
 use self::path_random::SDPathRandomAdversary;
-use crate::config::{Configurable, CfgErrorMsg};
+use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::Network;
 use crate::packet::Packet;
 use serde_json::Value;
@@ -15,16 +15,15 @@ pub enum Adversary {
 }
 
 impl Adversary {
+    /// Get a new `SDPathRandomAdversary` variant with the given seed.
+    pub fn sd_path_random_from_seed(seed: u64) -> Self {
+        Self::SDPathRandom(SDPathRandomAdversary::from_seed(seed))
+    }
+
     /// Get the next packets, through `AdversaryTrait`
     pub fn get_next_packets(&mut self, network: &Network, rd: usize) -> Vec<Packet> {
         match self {
             Self::SDPathRandom(a) => a.get_next_packets(network, rd),
-        }
-    }
-
-    pub fn is_random(&self) -> bool {
-        match self {
-            Self::SDPathRandom(_) => true,
         }
     }
 }
@@ -40,7 +39,9 @@ impl Configurable for Adversary {
         }?;
 
         match &name[..] {
-            SD_PATH_RANDOM_NAME => Ok(Adversary::SDPathRandom(SDPathRandomAdversary::from_config(config.clone()).unwrap())),
+            SD_PATH_RANDOM_NAME => Ok(Adversary::SDPathRandom(
+                SDPathRandomAdversary::from_config(config.clone()).unwrap(),
+            )),
             _ => Err(format!("No adversary with name {}", name)),
         }
     }

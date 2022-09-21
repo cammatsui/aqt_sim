@@ -1,7 +1,7 @@
+use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::Network;
 use crate::packet::Packet;
-use crate::config::{Configurable, CfgErrorMsg};
-use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use std::fs;
 use std::io::prelude::*;
 
@@ -9,7 +9,7 @@ use std::io::prelude::*;
 const LINE_LIMIT: usize = 5000;
 
 /// Enum for all `Recorder`s.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Recorder {
     DebugPrint(DebugPrintRecorder),
     File(FileRecorder),
@@ -57,9 +57,45 @@ impl Recorder {
     }
 }
 
-impl Configurable for Recorder {
-    fn from_config(config: Value) -> 
+const RECORDER_NAME_KEY: &str = "recorder_name";
+const DEBUG_PRINT_NAME: &str = "debug_print";
+const BUFFER_LOAD_NAME: &str = "buffer_load";
+const ABSORPTION_NAME: &str = "absorption";
 
+impl Configurable for Recorder {
+    fn from_config(config: Value) -> Result<Self, CfgErrorMsg> {
+        // TODO: correct error msg
+        let map: Map<String, Value> = config.as_object().unwrap().clone();
+        let recorder_name = match map.get(RECORDER_NAME_KEY) {
+            Some(Value::String(name)) => Ok(name),
+            _ => Err(String::from("No protocol name found.")),
+        }?;
+
+        match &recorder_name[..] {
+            DEBUG_PRINT_NAME => Ok(Self::DebugPrint(DebugPrintRecorder::new())),
+            BUFFER_LOAD_NAME => Ok(Self::File(FileRecorder::new(
+                FileRecorderType::BufferLoadCSV,
+            ))),
+            ABSORPTION_NAME => Ok(Self::File(FileRecorder::new(
+                FileRecorderType::AbsorptionCSV,
+            ))),
+            _ => Err(format!("No recorder with name {}.", recorder_name)),
+        }
+    }
+
+    fn to_config(&self) -> Value {
+        let mut map: Map<String, Value> = Map::new();
+        let key = RECORDER_NAME_KEY.to_string();
+        let val = match self {
+            Self::DebugPrint(_) => DEBUG_PRINT_NAME.to_string(),
+            Self::File(r) => match r.recorder_type {
+                FileRecorderType::BufferLoadCSV => BUFFER_LOAD_NAME.to_string(),
+                FileRecorderType::AbsorptionCSV => ABSORPTION_NAME.to_string(),
+            },
+        };
+        map.insert(key, Value::String(val));
+        Value::Object(map)
+    }
 }
 
 /// Trait implemented by all recorders.
@@ -70,12 +106,12 @@ pub trait RecorderTrait {
 }
 
 /// Prints the network and any to the console.
-#[derive(Serialize, Deserialize, Clone)]
-pub struct DebugPrintRecorder {}
+#[derive(Clone)]
+pub struct DebugPrintRecorder;
 
 impl DebugPrintRecorder {
     fn new() -> Self {
-        DebugPrintRecorder {}
+        DebugPrintRecorder
     }
 }
 
@@ -113,21 +149,19 @@ impl RecorderTrait for DebugPrintRecorder {
 }
 
 /// Types of file recorders.
-#[derive(Serialize, Clone, Copy, Deserialize)]
+#[derive(Clone, Copy)]
 pub enum FileRecorderType {
     AbsorptionCSV,
     BufferLoadCSV,
 }
 
 /// Write some aspect of the simulation state to a file.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct FileRecorder {
     recorder_type: FileRecorderType,
-    #[serde(skip)]
     lines: Vec<String>,
     // We require the output dir path to be set; optional so that Simulation::new() caller doesn't
     // have to construct and provide every individual file's output path.
-    #[serde(skip)]
     file_path: Option<String>,
 }
 

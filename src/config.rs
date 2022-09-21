@@ -1,7 +1,9 @@
 use serde_json::{Map, Value};
 
+/// String containing a configuration error message.
 pub type CfgErrorMsg = String;
 
+/// Trait which structs which we can dump to/load from a json config.
 pub trait Configurable {
     fn from_config(config: Value) -> Result<Self, CfgErrorMsg>
     where
@@ -9,13 +11,7 @@ pub trait Configurable {
     fn to_config(&self) -> Value;
 }
 
-pub const ADJACENCY_KEY: &str = "graph_adjacency";
-pub const PROTOCOL_KEY: &str = "protocol";
-pub const ADVERSARY_KEY: &str = "adversary";
-pub const THRESHOLD_KEY: &str = "threshold";
-pub const RECORDERS_KEY: &str = "recorders";
-pub const OUTPUT_PATH_KEY: &str = "output_path";
-
+/// Configuration for a `Simulation` run.
 pub struct SimConfig {
     pub graph_adjacency: Value,
     pub protocol_cfg: Value,
@@ -24,6 +20,13 @@ pub struct SimConfig {
     pub recorder_cfgs: Value,
     pub output_path: String,
 }
+
+pub const ADJACENCY_KEY: &str = "graph_adjacency";
+pub const PROTOCOL_KEY: &str = "protocol";
+pub const ADVERSARY_KEY: &str = "adversary";
+pub const THRESHOLD_KEY: &str = "threshold";
+pub const RECORDERS_KEY: &str = "recorders";
+pub const OUTPUT_PATH_KEY: &str = "output_path";
 
 impl SimConfig {
     fn get_key(
@@ -37,6 +40,7 @@ impl SimConfig {
         }
     }
 
+    /// Get a new `SimConfig` from the given `serde_json::Value`.
     pub fn from_val(config: Value) -> Result<Self, CfgErrorMsg> {
         let mut obj = match config {
             Value::Object(map) => map,
@@ -64,6 +68,7 @@ impl SimConfig {
         })
     }
 
+    /// Dump this `SimConfig` to a `serde_json::Value`.
     pub fn to_val(&self) -> Value {
         let mut map = Map::new();
         map.insert(ADJACENCY_KEY.to_string(), self.graph_adjacency.clone());
@@ -79,15 +84,17 @@ impl SimConfig {
     }
 }
 
-const SIMS_KEY: &str = "simulations";
-const PARALLEL_KEY: &str = "parallelize";
-
+/// Config for the entire program.
 pub struct Config {
-    sim_cfgs: Vec<SimConfig>,
-    parallel: bool,
+    pub sim_configs: Vec<SimConfig>,
+    pub parallel: bool,
 }
 
+const SIMS_KEY: &str = "simulations";
+const PARALLEL_KEY: &str = "parallel";
+
 impl Config {
+    /// Parse a json string into a `Config`.
     pub fn from_string(data: String) -> Result<Self, CfgErrorMsg> {
         let parsed: Value = serde_json::from_str(&data).unwrap();
         // TODO: Correct error message here
@@ -110,14 +117,15 @@ impl Config {
             )),
         }?;
 
-        Ok(Self { sim_cfgs, parallel })
+        Ok(Self { sim_configs: sim_cfgs, parallel })
     }
 
+    /// Dump this `Config` into a json string.
     pub fn to_string(&self) -> String {
         let mut map = Map::new();
         map.insert(PARALLEL_KEY.to_string(), Value::Bool(self.parallel));
         let mut sims_arr = Vec::new();
-        for sim_cfg in &self.sim_cfgs {
+        for sim_cfg in &self.sim_configs {
             sims_arr.push(sim_cfg.to_val())
         }
         map.insert(SIMS_KEY.to_string(), Value::Array(sims_arr));

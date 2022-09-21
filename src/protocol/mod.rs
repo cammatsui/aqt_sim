@@ -3,7 +3,7 @@
 
 use self::greedy::{GreedyFIFO, GreedyLIS};
 use self::oed::OEDWithSwap;
-use crate::config::{Configurable, CfgErrorMsg};
+use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::Network;
 use crate::packet::Packet;
 use serde_json::{Map, Value};
@@ -63,7 +63,7 @@ impl Configurable for Protocol {
         let map: Map<String, Value> = config.as_object().unwrap().clone();
         let protocol_name = match map.get(PROTOCOL_NAME_KEY) {
             Some(Value::String(name)) => Ok(name),
-            _ => Err(String::from("No protocol name found."))
+            _ => Err(String::from("No protocol name found.")),
         }?;
 
         match &protocol_name[..] {

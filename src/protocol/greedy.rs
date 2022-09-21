@@ -1,17 +1,16 @@
 //! This module contains implementations of greedy protocols.
 
+use super::{CAPACITY_KEY, GREEDY_FIFO_NAME, GREEDY_LIS_NAME, PROTOCOL_NAME_KEY};
+use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::{Network, NodeID};
 use crate::packet::Packet;
 use crate::protocol::ProtocolTrait;
-use crate::config::{Configurable, CfgErrorMsg};
-use serde::{Deserialize, Serialize};
+use serde_json::{Map, Number, Value};
 use std::cmp::min;
-use serde_json::{Map, Value, Number};
-use super::{GREEDY_FIFO_NAME, GREEDY_LIS_NAME, PROTOCOL_NAME_KEY, CAPACITY_KEY};
 
 /// The greedy FIFO protocol always forwards packets as many packets from a buffer as allowed by
 /// the protocol's capacity.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct GreedyFIFO {
     capacity: usize,
 }
@@ -79,15 +78,21 @@ impl Configurable for GreedyFIFO {
 
     fn to_config(&self) -> Value {
         let mut map: Map<String, Value> = Map::new();
-        map.insert(PROTOCOL_NAME_KEY.to_string(), Value::String(GREEDY_FIFO_NAME.to_string()));
-        map.insert(CAPACITY_KEY.to_string(), Value::Number(Number::from(self.capacity)));
+        map.insert(
+            PROTOCOL_NAME_KEY.to_string(),
+            Value::String(GREEDY_FIFO_NAME.to_string()),
+        );
+        map.insert(
+            CAPACITY_KEY.to_string(),
+            Value::Number(Number::from(self.capacity)),
+        );
         Value::Object(map)
     }
 }
 
-/// The greedy LIS protocol always forwards packets as many of the oldest packets from a buffer as 
+/// The greedy LIS protocol always forwards packets as many of the oldest packets from a buffer as
 /// allowed by the protocol's capacity.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct GreedyLIS {
     capacity: usize,
 }
@@ -164,8 +169,14 @@ impl Configurable for GreedyLIS {
 
     fn to_config(&self) -> Value {
         let mut map: Map<String, Value> = Map::new();
-        map.insert(PROTOCOL_NAME_KEY.to_string(), Value::String(GREEDY_LIS_NAME.to_string()));
-        map.insert(CAPACITY_KEY.to_string(), Value::Number(Number::from(self.capacity)));
+        map.insert(
+            PROTOCOL_NAME_KEY.to_string(),
+            Value::String(GREEDY_LIS_NAME.to_string()),
+        );
+        map.insert(
+            CAPACITY_KEY.to_string(),
+            Value::Number(Number::from(self.capacity)),
+        );
         Value::Object(map)
     }
 }

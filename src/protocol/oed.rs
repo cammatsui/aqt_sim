@@ -1,11 +1,11 @@
 //! This module contains implementations of OED protocols.
 
+use super::{OED_WITH_SWAP_NAME, PROTOCOL_NAME_KEY};
+use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::{Network, NodeID};
 use crate::packet::Packet;
-use crate::config::{Configurable, CfgErrorMsg};
 use crate::protocol::ProtocolTrait;
-use serde_json::{Value, Map};
-use super::{PROTOCOL_NAME_KEY, OED_WITH_SWAP_NAME};
+use serde_json::{Map, Value};
 
 /// In the OED With Swap protocol, we forward the oldest packet from buffer x if x and x+1 fulfill
 /// the OED criterion or the oldest packet in x is older than the youngest in x+1, and send the
@@ -178,7 +178,6 @@ impl OEDWithSwap {
                 .push(self.buffer_oldest_youngest_injection_rds(from_id, to_id, network));
         }
 
-
         // Use OED with Swapping protocol to determine whether each buffer should send a packet
         // forward and/or backward. For a tuple in result, the first idx is whether to forward, the
         // second is whether to send a packet backward.
@@ -217,16 +216,18 @@ impl OEDWithSwap {
 }
 
 impl Configurable for OEDWithSwap {
-    fn from_config(config: Value) -> Result<Self, CfgErrorMsg> {
+    fn from_config(_config: Value) -> Result<Self, CfgErrorMsg> {
         Ok(Self)
     }
 
     fn to_config(&self) -> Value {
         let mut map: Map<String, Value> = Map::new();
-        map.insert(PROTOCOL_NAME_KEY.to_string(), Value::String(OED_WITH_SWAP_NAME.to_string()));
+        map.insert(
+            PROTOCOL_NAME_KEY.to_string(),
+            Value::String(OED_WITH_SWAP_NAME.to_string()),
+        );
         Value::Object(map)
     }
-
 }
 
 #[cfg(test)]
@@ -404,11 +405,7 @@ mod tests {
         let p2 = factory.create_packet(packet_path.clone(), 1, 0);
         let p3 = factory.create_packet(packet_path.clone(), 2, 1);
 
-        let (p1_c, p2_c, p3_c) = (
-            p1.clone(),
-            p2.clone(),
-            p3.clone(),
-        );
+        let (p1_c, p2_c, p3_c) = (p1.clone(), p2.clone(), p3.clone());
 
         network.add_packet(p1, 1, 2);
         network.add_packet(p2, 0, 1);
@@ -432,7 +429,7 @@ mod tests {
         let mut factory = PacketFactory::new();
         // 0
         // 2
-        // - 
+        // -
         // 0
         let p1 = factory.create_packet(packet_path.clone(), 0, 0);
         let p2 = factory.create_packet(packet_path.clone(), 2, 0);
@@ -441,6 +438,9 @@ mod tests {
         network.add_packet(p2, 0, 1);
 
         let oed = OEDWithSwap::new();
-        assert_eq!(oed.buffer_oldest_youngest_injection_rds(0, 1, &network), Some((0, 2)));
+        assert_eq!(
+            oed.buffer_oldest_youngest_injection_rds(0, 1, &network),
+            Some((0, 2))
+        );
     }
 }

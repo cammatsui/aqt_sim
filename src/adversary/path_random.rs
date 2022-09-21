@@ -5,7 +5,7 @@ use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::{Network, NodeID};
 use crate::packet::{Packet, PacketFactory};
 use crate::simulation::random::SimRng;
-use serde_json::{Map, Value, Number};
+use serde_json::{Map, Number, Value};
 
 /// A single-destination path random adversary, which injects one packet per round into a random
 /// buffer on the path.
@@ -62,7 +62,10 @@ impl Configurable for SDPathRandomAdversary {
 
     fn to_config(&self) -> Value {
         let mut map = Map::new();
-        map.insert(ADVERSARY_NAME_KEY.to_string(), Value::String(SD_PATH_RANDOM_NAME.to_string()));
+        map.insert(
+            ADVERSARY_NAME_KEY.to_string(),
+            Value::String(SD_PATH_RANDOM_NAME.to_string()),
+        );
         if let Some(seed) = self.seed {
             map.insert(SEED_NAME_KEY.to_string(), Value::Number(Number::from(seed)));
         }
