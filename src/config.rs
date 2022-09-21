@@ -117,7 +117,10 @@ impl Config {
             )),
         }?;
 
-        Ok(Self { sim_configs: sim_cfgs, parallel })
+        Ok(Self {
+            sim_configs: sim_cfgs,
+            parallel,
+        })
     }
 
     /// Dump this `Config` into a json string.
