@@ -1,6 +1,7 @@
 use crate::network::Network;
 use crate::packet::Packet;
-use serde::Deserialize;
+use crate::config::{Configurable, CfgErrorMsg};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::prelude::*;
 
@@ -8,7 +9,7 @@ use std::io::prelude::*;
 const LINE_LIMIT: usize = 5000;
 
 /// Enum for all `Recorder`s.
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Recorder {
     DebugPrint(DebugPrintRecorder),
     File(FileRecorder),
@@ -56,6 +57,11 @@ impl Recorder {
     }
 }
 
+impl Configurable for Recorder {
+    fn from_config(config: Value) -> 
+
+}
+
 /// Trait implemented by all recorders.
 pub trait RecorderTrait {
     fn record(&mut self, rd: usize, prime: bool, network: &Network, absorbed: Option<&Vec<Packet>>);
@@ -64,12 +70,12 @@ pub trait RecorderTrait {
 }
 
 /// Prints the network and any to the console.
-#[derive(Deserialize, Clone)]
-pub struct DebugPrintRecorder;
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DebugPrintRecorder {}
 
 impl DebugPrintRecorder {
     fn new() -> Self {
-        DebugPrintRecorder
+        DebugPrintRecorder {}
     }
 }
 
@@ -107,16 +113,17 @@ impl RecorderTrait for DebugPrintRecorder {
 }
 
 /// Types of file recorders.
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Serialize, Clone, Copy, Deserialize)]
 pub enum FileRecorderType {
     AbsorptionCSV,
     BufferLoadCSV,
 }
 
 /// Write some aspect of the simulation state to a file.
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FileRecorder {
     recorder_type: FileRecorderType,
+    #[serde(skip)]
     lines: Vec<String>,
     // We require the output dir path to be set; optional so that Simulation::new() caller doesn't
     // have to construct and provide every individual file's output path.

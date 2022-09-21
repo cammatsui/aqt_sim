@@ -3,8 +3,10 @@
 //! done via `NodeID`s, indices into the network's `Node` vector, where nodes are referenced by
 //! IDs and `EdgeBuffers` are referenced by pairs of from- and to-IDs.
 
+use crate::config::{CfgErrorMsg, Configurable};
 use crate::packet::Packet;
 use hashbrown::HashMap;
+use serde_json::{Number, Value};
 use std::fmt;
 
 /// The `Network` struct wraps the underlying graph data structure and manages the buffers of
@@ -47,13 +49,13 @@ impl Network {
     }
 
     /// Create a `Network` from the given adjacency lists.
-    pub fn from_graph_structure(structure: Vec<Vec<usize>>) -> Self {
+    pub fn from_adj_lists(adj_lists: Vec<Vec<usize>>) -> Self {
         let mut network = Self::new();
-        for _ in 0..structure.len() {
+        for _ in 0..adj_lists.len() {
             network.add_node();
         }
-        for node_id in 0..structure.len() {
-            let neighbors = &structure[node_id];
+        for node_id in 0..adj_lists.len() {
+            let neighbors = &adj_lists[node_id];
             let _: Vec<()> = neighbors
                 .into_iter()
                 .map(|to_id| network.add_edgebuffer(node_id, *to_id))
@@ -63,7 +65,7 @@ impl Network {
     }
 
     // Get a `Vec<Vec<usize>>` which is adjacency lists of underlying graph.
-    pub fn graph_structure(&self) -> Vec<Vec<usize>> {
+    pub fn adj_lists(&self) -> Vec<Vec<usize>> {
         // eg:
         // [
         //  [3, 5],
@@ -202,6 +204,39 @@ impl fmt::Display for Network {
             result.push_str(&format!("{}, {}: {:?}\n", from_id, to_id, buffer));
         }
         write!(f, "{}", result)
+    }
+}
+
+impl Configurable for Network {
+    fn from_config(config: Value) -> Result<Self, CfgErrorMsg> {
+        // TODO: correct error message here
+        let adj_list_cfgs = config.as_array().unwrap().clone();
+        let mut adj_lists = Vec::new();
+        for adj_list_val in &adj_list_cfgs {
+            let adj_list_cfg: Vec<Value> = adj_list_val.as_array().unwrap().clone();
+            adj_lists.push(
+                adj_list_cfg
+                    .iter()
+                    .map(|x| x.as_u64().unwrap() as usize)
+                    .collect(),
+            );
+        }
+
+        Ok(Self::from_adj_lists(adj_lists))
+    }
+
+    fn to_config(&self) -> Value {
+        let adj_lists = self.adj_lists();
+        let mut adj_list_cfgs = Vec::new();
+        for adj_list in adj_lists {
+            let adj_list_cfg = adj_list
+                .iter()
+                .map(|l| Value::Number(Number::from(*l)))
+                .collect();
+            adj_list_cfgs.push(Value::Array(adj_list_cfg));
+        }
+
+        Value::Array(adj_list_cfgs)
     }
 }
 

@@ -3,14 +3,15 @@
 //! `Threshold` trait and its implementations, which determines when to stop the simulation.
 
 use crate::adversary::Adversary;
+use crate::config;
+use crate::config::{Configurable, SimConfig};
 use crate::network::Network;
 use crate::protocol::Protocol;
 use crate::simulation::recorder::Recorder;
 use crate::simulation::threshold::Threshold;
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::prelude::*;
+use serde_json::{Map, Value};
 
+pub mod random;
 pub mod recorder;
 pub mod threshold;
 
@@ -22,33 +23,10 @@ pub struct Simulation {
     adversary: Adversary,
     threshold: Threshold,
     recorders: Vec<Recorder>,
+    output_path: String,
 }
 
 impl Simulation {
-    /// Get a new `Simulation` from the given (deserialized) `SimulationConfig`.
-    pub fn from_config(config: SimulationConfig) -> Self {
-        Simulation::new(
-            Network::from_graph_structure(config.adjacency),
-            config.protocol,
-            config.adversary,
-            config.threshold,
-            config.recorders,
-            config.output_path,
-        )
-    }
-
-    /// Write this `Simulation` to a `SimulationConfig` for serialization.
-    pub fn to_config(&self, output_path: String) -> SimulationConfig {
-        SimulationConfig {
-            adjacency: self.network.graph_structure(),
-            protocol: self.protocol.clone(),
-            adversary: self.adversary.clone(),
-            threshold: self.threshold.clone(),
-            recorders: self.recorders.clone(),
-            output_path,
-        }
-    }
-
     /// Create a new `Simulation`. Use this to run non-debug sims.
     pub fn new(
         network: Network,
@@ -64,30 +42,27 @@ impl Simulation {
             adversary,
             threshold,
             recorders,
+            output_path,
         };
-        // TODO: save sim details to json with serde. For now just save network.
-        new_sim.save_config(&output_path);
+        //new_sim.save_config(&output_path);
         for recorder in &mut new_sim.recorders {
             recorder.set_output_path(output_path.clone())
         }
         new_sim
     }
 
-    /// Create a new `Simulation` with a `DebugPrintRecorder` pre-added.
-    pub fn new_debug(
-        network: Network,
-        protocol: Protocol,
-        adversary: Adversary,
-        threshold: Threshold,
-    ) -> Self {
-        let recorders: Vec<Recorder> = vec![Recorder::new_debug_print()];
-        Simulation {
-            network,
-            protocol,
-            adversary,
-            threshold,
+    /// Create a new `Simulation` from the provided `SimConfig`.
+    pub fn from_config(cfg: SimConfig) -> Self {
+        let mut recorders = cfg.recorder_cfgs.as_array().unwrap().iter()
+            .map(|c| Recorder::from_config(c.clone()).unwrap()).collect();
+        Simulation::new(
+            Network::from_config(cfg.graph_adjacency).unwrap(),
+            Protocol::from_config(cfg.protocol_cfg).unwrap(),
+            Adversary::from_config(cfg.adversary_cfg).unwrap(),
+            Threshold::from_config(cfg.threshold_cfg).unwrap(),
             recorders,
-        }
+            cfg.output_path,
+        )
     }
 
     /// Run the simulation for the given number of rounds.
@@ -123,48 +98,20 @@ impl Simulation {
         }
     }
 
-    fn save_config(&self, output_path: &str) {
+    fn to_config_str(&self) -> String {
+        let mut map = Map::new();
+        map.insert(config::ADJACENCY_KEY.to_string(), self.network.to_config());
+        map.insert(config::PROTOCOL_KEY.to_string(), self.protocol.to_config());
+        map.insert(config::ADVERSARY_KEY.to_string(), self.adversary.to_config());
+        map.insert(config::THRESHOLD_KEY.to_string(), self.adversary.to_config());
+        let recorder_cfgs = self.recorders.iter().map(|r| r.to_config()).collect();
+        map.insert(config::RECORDERS_KEY.to_string(), Value::Array(recorder_cfgs));
+        serde_json::to_string(&Value::Object(map)).unwrap()
+    }
+
+
+    /*fn save_config(&self, output_path: &str) {
         let config = self.to_config(String::from(output_path));
         config.save_to_file(output_path);
-    }
-}
-
-/// Represents a configuration for a `Simulation` struct.
-#[derive(Serialize, Deserialize)]
-pub struct SimulationConfig {
-    adjacency: Vec<Vec<usize>>,
-    protocol: Protocol,
-    adversary: Adversary,
-    threshold: Threshold,
-    #[serde(skip_serializing)]
-    recorders: Vec<Recorder>,
-    output_path: String,
-}
-
-impl SimulationConfig {
-    const SIM_CONFIG_FILENAME: &'static str = "sim_config.json";
-
-    /// Save this config to the given file.
-    pub fn save_to_file(&self, output_path: &str) {
-        let data = serde_json::to_string_pretty(&self).unwrap();
-        fs::create_dir_all(output_path.clone()).expect("Failed to save simulation results.");
-        let mut filepath = String::from(output_path);
-        filepath.push_str(&format!("/{}", Self::SIM_CONFIG_FILENAME));
-
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(&filepath)
-            .unwrap();
-
-        if let Err(_) = writeln!(file, "{}", data) {
-            eprintln!("Couldn't write to file {}", filepath);
-        }
-    }
-
-    /// Read a vector of `SimulationConfig`s from a file.
-    pub fn read_configs_from_file(&self, file_path: &str) -> Vec<SimulationConfig> {
-        let json = fs::read_to_string(file_path).unwrap();
-        serde_json::from_str(&json).unwrap()
-    }
+    }*/
 }

@@ -1,0 +1,109 @@
+[
+{
+  "adjacency": [
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ],
+    [
+      7
+    ],
+    [
+      8
+    ],
+    [
+      9
+    ],
+    []
+  ],
+  "protocol": {
+    "GreedyLIS": {
+        "capacity": 1
+    }
+  },
+  "adversary": {
+    "SDPathRandom": {}
+  },
+  "threshold": {
+    "Timed": {
+      "max_rds": 10000
+    }
+  },
+  "recorders": [
+    {
+      "File": {
+        "recorder_type": "AbsorptionCSV"
+      }
+    }
+  ],
+  "output_path": "/home/cammatsui/Dev/aqt_sim/output/oed_swap",
+  "seed": 37
+},
+{
+  "adjacency": [
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ],
+    [
+      7
+    ],
+    [
+      8
+    ],
+    [
+      9
+    ],
+    []
+  ],
+  "protocol": {
+    "OEDWithSwap": {}
+  },
+  "adversary": {
+    "SDPathRandom": {
+    }
+  },
+  "threshold": {
+    "Timed": {
+      "max_rds": 10000
+    }
+  },
+  "recorders": [
+    {
+      "File": {
+        "recorder_type": "AbsorptionCSV"
+      }
+    }
+  ],
+  "output_path": "/home/cammatsui/Dev/aqt_sim/output/greedy_lis",
+  "seed": 37
+}
+]

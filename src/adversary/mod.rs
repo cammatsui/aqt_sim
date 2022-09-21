@@ -1,43 +1,53 @@
 //! This module contains all implementations of adversaries, which determine where Packets are
 //! injected into the network.
 
-use self::preset::PresetAdversary;
-use self::{path_random::SDPathRandomAdversary, preset::InjectionConfig};
+use self::path_random::SDPathRandomAdversary;
+use crate::config::{Configurable, CfgErrorMsg};
 use crate::network::Network;
 use crate::packet::Packet;
-use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub mod path_random;
-pub mod preset;
 
 /// Enum to store all adversaries.
-#[derive(Serialize, Deserialize, Clone)]
 pub enum Adversary {
     SDPathRandom(SDPathRandomAdversary),
-    Preset(PresetAdversary),
 }
 
 impl Adversary {
-    /// Create a new `SDPathRandomAdversary`.
-    pub fn new_sd_path_random() -> Self {
-        Self::SDPathRandom(SDPathRandomAdversary::new())
-    }
-
-    /// Create a new `SDPathRandomAdversary` with the given seed.
-    pub fn sd_path_random_from_seed(seed: u64) -> Self {
-        Self::SDPathRandom(SDPathRandomAdversary::from_seed(seed))
-    }
-
-    /// Create a new `PresetAdversary` from the given injection configs.
-    pub fn preset_from_injection_configs(to_inject: Vec<Vec<InjectionConfig>>) -> Self {
-        Self::Preset(PresetAdversary::from_injection_configs(to_inject))
-    }
-
     /// Get the next packets, through `AdversaryTrait`
     pub fn get_next_packets(&mut self, network: &Network, rd: usize) -> Vec<Packet> {
         match self {
             Self::SDPathRandom(a) => a.get_next_packets(network, rd),
-            Self::Preset(a) => a.get_next_packets(network, rd),
+        }
+    }
+
+    pub fn is_random(&self) -> bool {
+        match self {
+            Self::SDPathRandom(_) => true,
+        }
+    }
+}
+
+const ADVERSARY_NAME_KEY: &str = "adversary_name";
+const SD_PATH_RANDOM_NAME: &str = "sd_path_random";
+
+impl Configurable for Adversary {
+    fn from_config(config: Value) -> Result<Self, CfgErrorMsg> {
+        let name = match config.get(ADVERSARY_NAME_KEY) {
+            Some(Value::String(name)) => Ok(name),
+            _ => Err("No adversary name found."),
+        }?;
+
+        match &name[..] {
+            SD_PATH_RANDOM_NAME => Ok(Adversary::SDPathRandom(SDPathRandomAdversary::from_config(config.clone()).unwrap())),
+            _ => Err(format!("No adversary with name {}", name)),
+        }
+    }
+
+    fn to_config(&self) -> Value {
+        match self {
+            Self::SDPathRandom(a) => a.to_config(),
         }
     }
 }

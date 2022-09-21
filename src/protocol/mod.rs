@@ -1,11 +1,12 @@
 //! This module contains implementations of protocols, which handle how packets are forwarded and
 //! how packets are added to the network.
 
-use self::greedy::GreedyFIFO;
+use self::greedy::{GreedyFIFO, GreedyLIS};
 use self::oed::OEDWithSwap;
+use crate::config::{Configurable, CfgErrorMsg};
 use crate::network::Network;
 use crate::packet::Packet;
-use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 pub mod greedy;
 pub mod oed;
@@ -13,10 +14,11 @@ pub mod oed;
 /// Interface for forwarding protocol behaviors.
 // TODO: add check_graph_structure() to ensure that the graph we are using works with the given
 // protocol.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Protocol {
     OEDWithSwap(OEDWithSwap),
     GreedyFIFO(GreedyFIFO),
+    GreedyLIS(GreedyLIS),
 }
 
 impl Protocol {
@@ -35,14 +37,48 @@ impl Protocol {
         match self {
             Self::GreedyFIFO(protocol) => protocol.add_packet(p, network),
             Self::OEDWithSwap(protocol) => protocol.add_packet(p, network),
+            Self::GreedyLIS(protocol) => protocol.add_packet(p, network),
         }
     }
 
     /// Forward packets on the given `Network` via `ProtocolTrait`.
     pub fn forward_packets(&mut self, network: &mut Network) -> Vec<Packet> {
         match self {
-            Self::GreedyFIFO(protocol) => protocol.forward_packets(network),
             Self::OEDWithSwap(protocol) => protocol.forward_packets(network),
+            Self::GreedyFIFO(protocol) => protocol.forward_packets(network),
+            Self::GreedyLIS(protocol) => protocol.forward_packets(network),
+        }
+    }
+}
+
+const PROTOCOL_NAME_KEY: &str = "protocol_name";
+const OED_WITH_SWAP_NAME: &str = "oed_swap";
+const GREEDY_FIFO_NAME: &str = "greedy_fifo";
+const GREEDY_LIS_NAME: &str = "greedy_lis";
+const CAPACITY_KEY: &str = "capacity";
+
+impl Configurable for Protocol {
+    fn from_config(config: Value) -> Result<Self, CfgErrorMsg> {
+        // TODO: correct error msg
+        let map: Map<String, Value> = config.as_object().unwrap().clone();
+        let protocol_name = match map.get(PROTOCOL_NAME_KEY) {
+            Some(Value::String(name)) => Ok(name),
+            _ => Err(String::from("No protocol name found."))
+        }?;
+
+        match &protocol_name[..] {
+            OED_WITH_SWAP_NAME => Ok(Self::OEDWithSwap(OEDWithSwap::from_config(config).unwrap())),
+            GREEDY_FIFO_NAME => Ok(Self::GreedyFIFO(GreedyFIFO::from_config(config).unwrap())),
+            GREEDY_LIS_NAME => Ok(Self::GreedyLIS(GreedyLIS::from_config(config).unwrap())),
+            _ => Err(format!("No protocol with name {}.", protocol_name)),
+        }
+    }
+
+    fn to_config(&self) -> Value {
+        match self {
+            Self::OEDWithSwap(p) => p.to_config(),
+            Self::GreedyLIS(p) => p.to_config(),
+            Self::GreedyFIFO(p) => p.to_config(),
         }
     }
 }
