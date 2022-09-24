@@ -1,3 +1,4 @@
+// You can write comments with '//', but no inline comments are allowed.
 {
     "parallel": true,
     "simulations": [
@@ -50,7 +51,7 @@
             ],
             "threshold": {
                 "threshold_name": "timed",
-                "max_rds": 10000
+                "max_rds": 15
             }
         },
         {
@@ -103,7 +104,7 @@
             ],
             "threshold": {
                 "threshold_name": "timed",
-                "max_rds": 10000
+                "max_rds": 15
             }
         }
     ]

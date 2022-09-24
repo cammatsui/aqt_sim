@@ -92,11 +92,13 @@ pub struct Config {
 
 const SIMS_KEY: &str = "simulations";
 const PARALLEL_KEY: &str = "parallel";
+const COMMENT_PREFIX: &str = "//";
 
 impl Config {
     /// Parse a json string into a `Config`.
     pub fn from_string(data: String) -> Result<Self, CfgErrorMsg> {
-        let parsed: Value = serde_json::from_str(&data).unwrap();
+        let uncommented_data = Self::remove_commented_lines(data);
+        let parsed: Value = serde_json::from_str(&uncommented_data).unwrap();
         // TODO: Correct error message here
         let mut map: Map<String, Value> = parsed.as_object().unwrap().clone();
 
@@ -121,6 +123,15 @@ impl Config {
             sim_configs: sim_cfgs,
             parallel,
         })
+    }
+
+    fn remove_commented_lines(config_str: String) -> String {
+        let lines = config_str.lines();
+        let uncommented_lines: Vec<String> = lines
+            .filter(|line| !line.contains(COMMENT_PREFIX))
+            .map(|line| line.to_string())
+            .collect();
+        uncommented_lines.concat()
     }
 
     /// Dump this `Config` into a json string.
