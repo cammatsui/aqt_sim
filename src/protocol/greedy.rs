@@ -143,9 +143,9 @@ impl GreedyLIS {
             let mut min_injection_rd = usize::MAX;
             let mut min_injection_idx = 0;
             for i in 0..eb.buffer.len() {
-                if eb.buffer[i].get_injection_rd() < min_injection_rd {
+                if eb.buffer[i].injection_rd() < min_injection_rd {
                     min_injection_idx = i;
-                    min_injection_rd = eb.buffer[i].get_injection_rd();
+                    min_injection_rd = eb.buffer[i].injection_rd();
                 }
             }
             let mut packet_to_fwd = eb.buffer.remove(min_injection_idx);

@@ -92,8 +92,8 @@ impl OEDWithSwap {
             .unwrap();
 
         Some((
-            eb.buffer[o_idx].get_injection_rd(),
-            eb.buffer[y_idx].get_injection_rd(),
+            eb.buffer[o_idx].injection_rd(),
+            eb.buffer[y_idx].injection_rd(),
         ))
     }
 
@@ -114,7 +114,7 @@ impl OEDWithSwap {
         let mut oldest_injection_idx = 0;
 
         for i in 0..load {
-            let p_injection_rd = eb.buffer[i].get_injection_rd();
+            let p_injection_rd = eb.buffer[i].injection_rd();
             if p_injection_rd <= oldest_injection_rd {
                 oldest_injection_rd = p_injection_rd;
                 oldest_injection_idx = i;
@@ -141,7 +141,7 @@ impl OEDWithSwap {
         let mut youngest_injection_idx = 0;
 
         for i in 0..load {
-            let p_injection_rd = eb.buffer[i].get_injection_rd();
+            let p_injection_rd = eb.buffer[i].injection_rd();
             if p_injection_rd >= youngest_injection_rd {
                 youngest_injection_rd = p_injection_rd;
                 youngest_injection_idx = i;

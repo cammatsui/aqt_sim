@@ -23,7 +23,7 @@ pub struct Packet {
 
 impl Packet {
     /// Get this `Packet`'s id.
-    pub fn get_id(&self) -> usize {
+    pub fn id(&self) -> usize {
         self.id
     }
 
@@ -56,7 +56,7 @@ impl Packet {
     }
 
     /// Get the injection round of this `Packet`.
-    pub fn get_injection_rd(&self) -> usize {
+    pub fn injection_rd(&self) -> usize {
         self.injection_rd
     }
 

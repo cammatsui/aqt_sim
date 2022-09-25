@@ -36,6 +36,8 @@ to `output_path/buffer_load.csv`.
 - Absorption: `"absorption"` in `config.json`. Records each absorbed packet with the round number
 of the absorption, the absorbed packet's id, and the absorbed packet's injection round to
 `output_path/absorption.csv`.
+- Smoothed configuration LIS recorder: `"smoothed_config_lis"` in `config.json`. Recorders the 
+smoothed configuration of the network at each timestep.
 
 ## Supported Thresholds
 - Timed: `"timed"` in `config.json`. Stops the simulation after the specified number of rounds.

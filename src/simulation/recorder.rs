@@ -61,6 +61,7 @@ const RECORDER_NAME_KEY: &str = "recorder_name";
 const DEBUG_PRINT_NAME: &str = "debug_print";
 const BUFFER_LOAD_NAME: &str = "buffer_load";
 const ABSORPTION_NAME: &str = "absorption";
+const SMOOTHED_CONFIG_LIS_NAME: &str = "smoothed_config_lis";
 
 impl Configurable for Recorder {
     fn from_config(config: Value) -> Result<Self, CfgErrorMsg> {
@@ -79,6 +80,9 @@ impl Configurable for Recorder {
             ABSORPTION_NAME => Ok(Self::File(FileRecorder::new(
                 FileRecorderType::AbsorptionCSV,
             ))),
+            SMOOTHED_CONFIG_LIS_NAME => Ok(Self::File(FileRecorder::new(
+                FileRecorderType::SmoothedConfigLISCSV,
+            ))),
             _ => Err(format!("No recorder with name {}.", recorder_name)),
         }
     }
@@ -91,6 +95,7 @@ impl Configurable for Recorder {
             Self::File(r) => match r.recorder_type {
                 FileRecorderType::BufferLoadCSV => BUFFER_LOAD_NAME.to_string(),
                 FileRecorderType::AbsorptionCSV => ABSORPTION_NAME.to_string(),
+                FileRecorderType::SmoothedConfigLISCSV => SMOOTHED_CONFIG_LIS_NAME.to_string(),
             },
         };
         map.insert(key, Value::String(val));
@@ -153,6 +158,7 @@ impl RecorderTrait for DebugPrintRecorder {
 pub enum FileRecorderType {
     AbsorptionCSV,
     BufferLoadCSV,
+    SmoothedConfigLISCSV,
 }
 
 /// Write some aspect of the simulation state to a file.
@@ -179,6 +185,7 @@ impl FileRecorder {
         match recorder_type {
             FileRecorderType::AbsorptionCSV => "absorption.csv",
             FileRecorderType::BufferLoadCSV => "buffer_load.csv",
+            FileRecorderType::SmoothedConfigLISCSV => "smoothed_config_lis.csv",
         }
     }
 
@@ -186,6 +193,9 @@ impl FileRecorder {
         match recorder_type {
             FileRecorderType::AbsorptionCSV => "rd,packet_id,packet_injection_rd\n",
             FileRecorderType::BufferLoadCSV => "rd,prime,buffer_from,buffer_to,load\n",
+            FileRecorderType::SmoothedConfigLISCSV => {
+                "rd,prime,buffer_from,buffer_to,packet_id,injection_rd\n"
+            }
         }
     }
 
@@ -258,8 +268,8 @@ impl RecorderTrait for FileRecorder {
                     self.write(format!(
                         "{},{},{}\n",
                         rd,
-                        packet.get_id(),
-                        packet.get_injection_rd()
+                        packet.id(),
+                        packet.injection_rd()
                     ));
                 }
             }
@@ -272,6 +282,52 @@ impl RecorderTrait for FileRecorder {
                         rd, prime_flag, from_id, to_id, load
                     ));
                 }
+            }
+            FileRecorderType::SmoothedConfigLISCSV => {
+                self.write_smoothed_config_lis_lines(rd, prime, network);
+            }
+        }
+    }
+}
+
+impl FileRecorder {
+    fn write_smoothed_config_lis_lines(&mut self, rd: usize, prime: bool, network: &Network) {
+        let prime_flag = if prime { 1 } else { 0 };
+        let edgebuffers_ids = network.get_edgebuffers();
+        let mut smoothing_queue: Vec<&Packet> = Vec::new();
+        for eb_ids in edgebuffers_ids.into_iter().rev() {
+            let buffer = &network.get_edgebuffer(eb_ids.0, eb_ids.1).unwrap().buffer;
+            for packet in buffer {
+                smoothing_queue.push(packet);
+            }
+
+            if smoothing_queue.len() == 0 {
+                // If queue empty, record empty (-1 for id and injection rd) for this eb.
+                self.write(format!(
+                    "{},{},{},{},{},{}\n",
+                    rd, prime_flag, eb_ids.0, eb_ids.1, -1, -1
+                ));
+            } else {
+                // Else, queue nonempty: pop oldest packet in queue, and record popped for this eb.
+                let mut min_injection_rd = usize::MAX;
+                let mut min_injection_idx = 0;
+                for i in 0..smoothing_queue.len() {
+                    let p = smoothing_queue[i];
+                    if p.injection_rd() < min_injection_rd {
+                        min_injection_rd = p.injection_rd();
+                        min_injection_idx = i;
+                    }
+                }
+                let oldest = smoothing_queue.remove(min_injection_idx);
+                self.write(format!(
+                    "{},{},{},{},{},{}\n",
+                    rd,
+                    prime_flag,
+                    eb_ids.0,
+                    eb_ids.1,
+                    oldest.id(),
+                    oldest.injection_rd(),
+                ));
             }
         }
     }
