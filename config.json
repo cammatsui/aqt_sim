@@ -3,9 +3,14 @@
     "parallel": true,
     "simulations": [
         {
+//            "adversary": {
+//                "adversary_name": "sd_path_random",
+//                "seed": 10
+//            },
             "adversary": {
-                "adversary_name": "sd_path_random",
-                "seed": 10
+                "adversary_name": "sd_path_random_bursty",
+                "seed": 10,
+                "sigma": 10
             },
             "graph_adjacency": [
                 [

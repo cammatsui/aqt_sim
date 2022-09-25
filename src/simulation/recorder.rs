@@ -301,25 +301,12 @@ impl FileRecorder {
                 smoothing_queue.push(packet);
             }
 
-            if smoothing_queue.len() == 0 {
-                // If queue empty, record empty (-1 for id and injection rd) for this eb.
-                self.write(format!(
+            match Self::pop_oldest_packet(&mut smoothing_queue) {
+                None => self.write(format!(
                     "{},{},{},{},{},{}\n",
                     rd, prime_flag, eb_ids.0, eb_ids.1, -1, -1
-                ));
-            } else {
-                // Else, queue nonempty: pop oldest packet in queue, and record popped for this eb.
-                let mut min_injection_rd = usize::MAX;
-                let mut min_injection_idx = 0;
-                for i in 0..smoothing_queue.len() {
-                    let p = smoothing_queue[i];
-                    if p.injection_rd() < min_injection_rd {
-                        min_injection_rd = p.injection_rd();
-                        min_injection_idx = i;
-                    }
-                }
-                let oldest = smoothing_queue.remove(min_injection_idx);
-                self.write(format!(
+                )),
+                Some(oldest) => self.write(format!(
                     "{},{},{},{},{},{}\n",
                     rd,
                     prime_flag,
@@ -327,8 +314,38 @@ impl FileRecorder {
                     eb_ids.1,
                     oldest.id(),
                     oldest.injection_rd(),
-                ));
+                )),
             }
         }
+        // "Negative buffers" for packets remaining in the smoothing queue.
+        let mut negative_buffer_to: i64 = 0;
+        while let Some(oldest) = Self::pop_oldest_packet(&mut smoothing_queue) {
+            self.write(format!(
+                "{},{},{},{},{},{}\n",
+                rd,
+                prime_flag,
+                negative_buffer_to,
+                negative_buffer_to - 1,
+                oldest.id(),
+                oldest.injection_rd(),
+            ));
+            negative_buffer_to -= 1;
+        }
+    }
+
+    fn pop_oldest_packet<'a>(queue: &'a mut Vec<&Packet>) -> Option<&'a Packet> {
+        if queue.len() == 0 {
+            return None;
+        }
+        let mut min_injection_rd = usize::MAX;
+        let mut min_injection_idx = 0;
+        for i in 0..queue.len() {
+            let p = queue[i];
+            if p.injection_rd() < min_injection_rd {
+                min_injection_rd = p.injection_rd();
+                min_injection_idx = i;
+            }
+        }
+        Some(queue.remove(min_injection_idx))
     }
 }

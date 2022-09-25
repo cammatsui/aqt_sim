@@ -22,6 +22,9 @@ The config format also allows for comments with `//`, but not inline comments.
 ## Supported Adversaries
 - Single destination path random adversary: `"sd_path_random"` in `config.json`: randomly injects
 one packet per round on a single destination path network.
+- Single destination path random bursty adversary: `"sd_path_random_bursty"` in `config.json`:
+a random (1, `sigma`) adversary. Keeps track of `xi` and injects a random number of packets 
+(between 0 and `sigma-xi+1`) with random sources.
 
 ## Supported Protocols
 - Odd-even-downhill with swap: `"oed_swap"` in `config.json`,
