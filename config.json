@@ -51,9 +51,6 @@
                 "recorder_name": "buffer_load"
                 },
                 {
-                "recorder_name": "debug_print"
-                },
-                {
                 "recorder_name": "absorption"
                 },
                 {
@@ -62,7 +59,7 @@
             ],
             "threshold": {
                 "threshold_name": "timed",
-                "max_rds": 15
+                "max_rds": 150
             }
         }
     ]

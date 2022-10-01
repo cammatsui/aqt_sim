@@ -1,0 +1,56 @@
+{
+  "adversary": {
+    "adversary_name": "sd_path_random_bursty",
+    "seed": 10,
+    "sigma": 10
+  },
+  "graph_adjacency": [
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ],
+    [
+      7
+    ],
+    [
+      8
+    ],
+    [
+      9
+    ],
+    []
+  ],
+  "output_path": "/home/cammatsui/Dev/aqt_sim/oed_output",
+  "protocol": {
+    "protocol_name": "oed_swap"
+  },
+  "recorders": [
+    {
+      "recorder_name": "buffer_load"
+    },
+    {
+      "recorder_name": "absorption"
+    },
+    {
+      "recorder_name": "smoothed_config_lis"
+    }
+  ],
+  "threshold": {
+    "max_rds": 150,
+    "threshold_name": "timed"
+  }
+}
