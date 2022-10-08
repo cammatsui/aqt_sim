@@ -4,7 +4,7 @@ use super::{OED_WITH_SWAP_NAME, PROTOCOL_NAME_KEY};
 use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::{Network, NodeID};
 use crate::packet::Packet;
-use crate::protocol::ProtocolTrait;
+use crate::protocol::{priority, ProtocolTrait};
 use serde_json::{Map, Value};
 
 /// In the OED With Swap protocol, we forward the oldest packet from buffer x if x and x+1 fulfill
@@ -52,16 +52,14 @@ impl OEDWithSwap {
             }
             let (forward, backward) = forward_or_backward[from_id];
             if forward {
-                let o_idx = self.get_oldest_packet_idx(from_id, to_id, network).unwrap();
+                let o_idx = self.highest_priority_idx(from_id, to_id, network).unwrap();
                 let buffer = &mut network.get_edgebuffer_mut(from_id, to_id).unwrap().buffer;
                 let mut p = buffer.remove(o_idx);
                 p.increment_path_idx();
                 result.push(p);
             }
             if backward {
-                let y_idx = self
-                    .get_youngest_packet_idx(from_id, to_id, network)
-                    .unwrap();
+                let y_idx = self.lowest_priority_idx(from_id, to_id, network).unwrap();
                 let buffer = &mut network.get_edgebuffer_mut(from_id, to_id).unwrap().buffer;
                 let mut p = buffer.remove(y_idx);
                 p.decrement_path_idx();
@@ -72,33 +70,27 @@ impl OEDWithSwap {
         result
     }
 
-    /// Get injection rounds of the oldest packet (to potentially send forward) and the youngest
-    /// packet (to potentially send backward).
-    fn buffer_oldest_youngest_injection_rds(
+    fn buffer_oldest_youngest_packets<'a>(
         &self,
         from_id: NodeID,
         to_id: NodeID,
-        network: &Network,
-    ) -> Option<(usize, usize)> {
+        network: &'a Network,
+    ) -> Option<(&'a Packet, &'a Packet)> {
         let eb = network.get_edgebuffer(from_id, to_id).unwrap();
         let load = eb.buffer.len();
         if load == 0 {
             return None;
         }
 
-        let o_idx = self.get_oldest_packet_idx(from_id, to_id, network).unwrap();
-        let y_idx = self
-            .get_youngest_packet_idx(from_id, to_id, network)
-            .unwrap();
+        let o_idx = self.highest_priority_idx(from_id, to_id, network).unwrap();
+        let y_idx = self.lowest_priority_idx(from_id, to_id, network).unwrap();
 
-        Some((
-            eb.buffer[o_idx].injection_rd(),
-            eb.buffer[y_idx].injection_rd(),
-        ))
+        Some((&eb.buffer[o_idx], &eb.buffer[y_idx]))
     }
 
-    /// Get the index of the oldest packet in the given buffer.
-    fn get_oldest_packet_idx(
+    /// Get the index of the highest priority packet (lexicographically, smallest injection rd 
+    /// then smallest id) in the given buffer.
+    fn highest_priority_idx(
         &self,
         from_id: NodeID,
         to_id: NodeID,
@@ -110,22 +102,20 @@ impl OEDWithSwap {
             return None;
         }
 
-        let mut oldest_injection_rd = usize::MAX;
-        let mut oldest_injection_idx = 0;
-
-        for i in 0..load {
-            let p_injection_rd = eb.buffer[i].injection_rd();
-            if p_injection_rd <= oldest_injection_rd {
-                oldest_injection_rd = p_injection_rd;
-                oldest_injection_idx = i;
+        let mut hipri_packet = &eb.buffer[0];
+        let mut hipri_idx = 0;
+        for i in 1..eb.buffer.len() {
+            if priority::lis_higher_priority(&eb.buffer[i], hipri_packet) {
+                hipri_packet = &eb.buffer[i];
+                hipri_idx = i;
             }
         }
-
-        Some(oldest_injection_idx)
+        Some(hipri_idx)
     }
 
-    /// Get the index of the youngest packet in the given buffer.
-    fn get_youngest_packet_idx(
+    /// Get the index of the lowest priority packet (lexicographically, largest injection rd 
+    /// then largest id) in the given buffer.
+    fn lowest_priority_idx(
         &self,
         from_id: NodeID,
         to_id: NodeID,
@@ -137,18 +127,15 @@ impl OEDWithSwap {
             return None;
         }
 
-        let mut youngest_injection_rd = 0;
-        let mut youngest_injection_idx = 0;
-
-        for i in 0..load {
-            let p_injection_rd = eb.buffer[i].injection_rd();
-            if p_injection_rd >= youngest_injection_rd {
-                youngest_injection_rd = p_injection_rd;
-                youngest_injection_idx = i;
+        let mut lopri_packet = &eb.buffer[0];
+        let mut lopri_idx = 0;
+        for i in 1..eb.buffer.len() {
+            if priority::lis_higher_priority(lopri_packet, &eb.buffer[i]) {
+                lopri_packet = &eb.buffer[i];
+                lopri_idx = i;
             }
         }
-
-        Some(youngest_injection_idx)
+        Some(lopri_idx)
     }
 
     /// Get a vector of `elt = (bool, bool)` indexed by from-ID where `elt.0` is whether the buffer
@@ -170,12 +157,11 @@ impl OEDWithSwap {
         let last_nonempty = maybe_last_eb.unwrap().buffer.len() > 0;
         oed_criterion.push(last_nonempty);
 
-        // Get max/min ages of buffers.
-        let mut oldest_youngest_rds = Vec::new();
+        // Get max/min packet refs for each buffer.
+        let mut oldest_youngest = Vec::new();
         for from_id in 0..num_nodes - 1 {
             let to_id = from_id + 1;
-            oldest_youngest_rds
-                .push(self.buffer_oldest_youngest_injection_rds(from_id, to_id, network));
+            oldest_youngest.push(self.buffer_oldest_youngest_packets(from_id, to_id, network));
         }
 
         // Use OED with Swapping protocol to determine whether each buffer should send a packet
@@ -183,7 +169,7 @@ impl OEDWithSwap {
         // second is whether to send a packet backward.
         let mut result = Vec::new();
         for from_id in 0..num_nodes - 1 {
-            let this_oldest_youngest = oldest_youngest_rds[from_id];
+            let this_oldest_youngest = oldest_youngest[from_id];
             if this_oldest_youngest == None {
                 result.push((false, false));
                 continue;
@@ -192,9 +178,9 @@ impl OEDWithSwap {
 
             let should_fwd;
             if from_id != num_nodes - 2 {
-                let next_oldest_youngest = oldest_youngest_rds[from_id + 1];
-                should_fwd =
-                    oed_criterion[from_id] || this_oldest < next_oldest_youngest.unwrap().1;
+                let next_oldest_youngest = oldest_youngest[from_id + 1];
+                should_fwd = oed_criterion[from_id]
+                    || priority::lis_higher_priority(this_oldest, next_oldest_youngest.unwrap().1)
             } else {
                 // Always forward for the last buffer since at this point we know the last buffer
                 // is nonempty.
@@ -203,10 +189,13 @@ impl OEDWithSwap {
 
             let mut should_bwd = false;
             if from_id != 0 {
-                let prev_oldest_youngest = oldest_youngest_rds[from_id - 1];
+                let prev_oldest_youngest = oldest_youngest[from_id - 1];
                 should_bwd = prev_oldest_youngest != None
                     && (!oed_criterion[from_id - 1]
-                        && this_youngest > prev_oldest_youngest.unwrap().0);
+                        && priority::lis_higher_priority(
+                            prev_oldest_youngest.unwrap().0,
+                            this_youngest,
+                        ));
             }
 
             result.push((should_fwd, should_bwd));
@@ -421,26 +410,5 @@ mod tests {
         assert!(b1.contains(&p3_c));
         assert!(b2.contains(&p2_c));
         assert!(b3.contains(&p1_c));
-    }
-
-    #[test]
-    fn test_buffer_oldest_youngest_injection_rds() {
-        let (mut network, packet_path) = setup_network_and_packet_path();
-        let mut factory = PacketFactory::new();
-        // 0
-        // 2
-        // -
-        // 0
-        let p1 = factory.create_packet(packet_path.clone(), 0, 0);
-        let p2 = factory.create_packet(packet_path.clone(), 2, 0);
-
-        network.add_packet(p1, 0, 1);
-        network.add_packet(p2, 0, 1);
-
-        let oed = OEDWithSwap::new();
-        assert_eq!(
-            oed.buffer_oldest_youngest_injection_rds(0, 1, &network),
-            Some((0, 2))
-        );
     }
 }

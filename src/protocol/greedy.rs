@@ -5,6 +5,7 @@ use crate::config::{CfgErrorMsg, Configurable};
 use crate::network::{Network, NodeID};
 use crate::packet::Packet;
 use crate::protocol::ProtocolTrait;
+use crate::protocol::priority;
 use serde_json::{Map, Number, Value};
 use std::cmp::min;
 
@@ -138,17 +139,18 @@ impl GreedyLIS {
         let eb = network.get_edgebuffer_mut(from_id, to_id).unwrap();
         let num_to_fwd = min(self.capacity, eb.buffer.len());
         let mut packets_to_fwd = Vec::new();
+        if eb.buffer.len() < num_to_fwd { return packets_to_fwd };
 
         for _ in 0..num_to_fwd {
-            let mut min_injection_rd = usize::MAX;
-            let mut min_injection_idx = 0;
-            for i in 0..eb.buffer.len() {
-                if eb.buffer[i].injection_rd() < min_injection_rd {
-                    min_injection_idx = i;
-                    min_injection_rd = eb.buffer[i].injection_rd();
+            let mut hipri_packet = &eb.buffer[0];
+            let mut hipri_idx = 0;
+            for i in 1..eb.buffer.len() {
+                if priority::lis_higher_priority(&eb.buffer[i], hipri_packet) {
+                    hipri_packet = &eb.buffer[i];
+                    hipri_idx = i;
                 }
             }
-            let mut packet_to_fwd = eb.buffer.remove(min_injection_idx);
+            let mut packet_to_fwd = eb.buffer.remove(hipri_idx);
             packet_to_fwd.increment_path_idx();
             packets_to_fwd.push(packet_to_fwd);
         }

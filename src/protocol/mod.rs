@@ -10,6 +10,7 @@ use serde_json::{Map, Value};
 
 pub mod greedy;
 pub mod oed;
+pub mod priority;
 
 /// Interface for forwarding protocol behaviors.
 // TODO: add check_graph_structure() to ensure that the graph we are using works with the given

@@ -338,10 +338,12 @@ impl FileRecorder {
             return None;
         }
         let mut min_injection_rd = usize::MAX;
+        let mut min_id = usize::MAX;
         let mut min_injection_idx = 0;
         for i in 0..queue.len() {
             let p = queue[i];
-            if p.injection_rd() < min_injection_rd {
+            if p.injection_rd() <= min_injection_rd && p.id() < min_id {
+                min_id = p.id();
                 min_injection_rd = p.injection_rd();
                 min_injection_idx = i;
             }

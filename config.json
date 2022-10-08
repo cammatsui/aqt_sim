@@ -59,7 +59,7 @@
             ],
             "threshold": {
                 "threshold_name": "timed",
-                "max_rds": 150
+                "max_rds": 15000
             }
         }
     ]
