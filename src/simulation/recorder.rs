@@ -16,11 +16,6 @@ pub enum Recorder {
 }
 
 impl Recorder {
-    /// Get a new `FileRecorder` from the given recorder type.
-    pub fn file_recorder_from_type(recorder_type: FileRecorderType) -> Self {
-        Recorder::File(FileRecorder::new(recorder_type))
-    }
-
     /// Get a new `DebugPrintRecorder`.
     pub fn new_debug_print() -> Self {
         Recorder::DebugPrint(DebugPrintRecorder::new())
@@ -62,6 +57,8 @@ const DEBUG_PRINT_NAME: &str = "debug_print";
 const BUFFER_LOAD_NAME: &str = "buffer_load";
 const ABSORPTION_NAME: &str = "absorption";
 const SMOOTHED_CONFIG_LIS_NAME: &str = "smoothed_config_lis";
+const NUM_RDS_NAME: &str = "num_rds";
+const MAX_LATENCY_NAME: &str = "max_latency";
 
 impl Configurable for Recorder {
     fn from_config(config: Value) -> Result<Self, CfgErrorMsg> {
@@ -83,6 +80,12 @@ impl Configurable for Recorder {
             SMOOTHED_CONFIG_LIS_NAME => Ok(Self::File(FileRecorder::new(
                 FileRecorderType::SmoothedConfigLISCSV,
             ))),
+            NUM_RDS_NAME => Ok(Self::File(FileRecorder::new(
+                FileRecorderType::NumRdsMetric(0),
+            ))),
+            MAX_LATENCY_NAME => Ok(Self::File(FileRecorder::new(
+                FileRecorderType::MaxLatencyMetric(0),
+            ))),
             _ => Err(format!("No recorder with name {}.", recorder_name)),
         }
     }
@@ -96,6 +99,8 @@ impl Configurable for Recorder {
                 FileRecorderType::BufferLoadCSV => BUFFER_LOAD_NAME.to_string(),
                 FileRecorderType::AbsorptionCSV => ABSORPTION_NAME.to_string(),
                 FileRecorderType::SmoothedConfigLISCSV => SMOOTHED_CONFIG_LIS_NAME.to_string(),
+                FileRecorderType::NumRdsMetric(_) => NUM_RDS_NAME.to_string(),
+                FileRecorderType::MaxLatencyMetric(_) => MAX_LATENCY_NAME.to_string(),
             },
         };
         map.insert(key, Value::String(val));
@@ -155,10 +160,12 @@ impl RecorderTrait for DebugPrintRecorder {
 
 /// Types of file recorders.
 #[derive(Clone, Copy)]
-pub enum FileRecorderType {
+enum FileRecorderType {
     AbsorptionCSV,
     BufferLoadCSV,
     SmoothedConfigLISCSV,
+    NumRdsMetric(usize),
+    MaxLatencyMetric(usize),
 }
 
 /// Write some aspect of the simulation state to a file.
@@ -186,6 +193,8 @@ impl FileRecorder {
             FileRecorderType::AbsorptionCSV => "absorption.csv",
             FileRecorderType::BufferLoadCSV => "buffer_load.csv",
             FileRecorderType::SmoothedConfigLISCSV => "smoothed_config_lis.csv",
+            FileRecorderType::NumRdsMetric(_) => "num_rds.csv",
+            FileRecorderType::MaxLatencyMetric(_) => "max_latency.csv",
         }
     }
 
@@ -196,6 +205,8 @@ impl FileRecorder {
             FileRecorderType::SmoothedConfigLISCSV => {
                 "rd,prime,buffer_from,buffer_to,packet_id,injection_rd\n"
             }
+            FileRecorderType::NumRdsMetric(_) => "num_rds\n",
+            FileRecorderType::MaxLatencyMetric(_) => "max_latency\n",
         }
     }
 
@@ -210,6 +221,12 @@ impl FileRecorder {
 
     /// Save the lines to a file.
     fn save(&mut self) {
+        match self.recorder_type {
+            FileRecorderType::NumRdsMetric(metric) => self.write(format!("{}", metric)),
+            FileRecorderType::MaxLatencyMetric(metric) => self.write(format!("{}", metric)),
+            _ => (),
+        }
+
         let data = self.lines.concat();
         let file_path_unwrapped = self
             .file_path
@@ -286,6 +303,25 @@ impl RecorderTrait for FileRecorder {
             FileRecorderType::SmoothedConfigLISCSV => {
                 self.write_smoothed_config_lis_lines(rd, prime, network);
             }
+            FileRecorderType::NumRdsMetric(record) => {
+                if rd > record {
+                    self.recorder_type = FileRecorderType::NumRdsMetric(rd);
+                }
+            }
+            FileRecorderType::MaxLatencyMetric(record) => {
+                if !prime {
+                    return;
+                }
+                let mut max_latency = record;
+                for packet in absorbed.unwrap() {
+                    if rd - packet.injection_rd() > max_latency {
+                        max_latency = rd - packet.injection_rd();
+                    }
+                }
+                if max_latency > record {
+                    self.recorder_type = FileRecorderType::MaxLatencyMetric(max_latency);
+                }
+            }
         }
     }
 }
@@ -351,3 +387,4 @@ impl FileRecorder {
         Some(queue.remove(min_injection_idx))
     }
 }
+

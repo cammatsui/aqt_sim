@@ -6,7 +6,6 @@ use crate::network::{Network, NodeID};
 use crate::packet::{Packet, PacketFactory};
 use crate::simulation::random::SimRng;
 use serde_json::{Map, Number, Value};
-use std::cmp::max;
 
 /// A single-destination path random adversary, which injects one packet per round into a random
 /// buffer on the path. Here, rho=1 and sigma=0.
@@ -112,7 +111,7 @@ impl AdversaryTrait for SDPathRandomBurstyAdversary {
     fn get_next_packets(&mut self, network: &Network, rd: usize) -> Vec<Packet> {
         // Possible numbers of packets to inject are 0..(sigma-xi+1). Choose uniformly from these
         // options.
-        let num_to_inject = self.rng.rand_int(self.sigma - self.xi + 1);
+        let num_to_inject = self.rng.rand_int(self.sigma - self.xi + 2);
         let mut next_packets = Vec::new();
         for _ in 0..num_to_inject {
             let dest_id: NodeID = network.get_num_nodes() - 1;
@@ -120,7 +119,11 @@ impl AdversaryTrait for SDPathRandomBurstyAdversary {
             next_packets.push(self.factory.create_packet((0..dest_id + 1).collect(), rd, src_id));
         }
         // Update xi.
-        self.xi = max(self.xi + num_to_inject - 1, 0);
+        if self.xi + num_to_inject == 0 {
+            self.xi = 0
+        } else {
+            self.xi = self.xi + num_to_inject - 1;
+        }
         next_packets
     }
 }

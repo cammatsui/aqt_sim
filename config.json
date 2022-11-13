@@ -1,66 +1,38 @@
 // You can write comments with '//', but no inline comments are allowed.
 {
-    "parallel": true,
+    "parallel": false,
     "simulations": [
         {
-//            "adversary": {
-//                "adversary_name": "sd_path_random",
-//                "seed": 10
-//            },
             "adversary": {
                 "adversary_name": "sd_path_random_bursty",
-                "seed": 10,
-                "sigma": 10
+                "sigma": 20
             },
             "graph_adjacency": [
-                [
-                1
-                ],
-                [
-                2
-                ],
-                [
-                3
-                ],
-                [
-                4
-                ],
-                [
-                5
-                ],
-                [
-                6
-                ],
-                [
-                7
-                ],
-                [
-                8
-                ],
-                [
-                9
-                ],
+                [1],
+                [2],
+                [3],
+                [4],
+                [5],
+                [6],
+                [7],
+                [8],
+                [9],
+                [10],
                 []
             ],
-            "output_path": "/home/cammatsui/Dev/aqt_sim/oed_output",
+            "threshold": {
+                "threshold_name": "timed",
+                "max_rds": 1000000
+            },
+            "output_path": "/home/cammatsui/Dev/aqt_sim/output",
             "protocol": {
                 "protocol_name": "oed_swap"
             },
             "recorders": [
                 {
-                "recorder_name": "buffer_load"
-                },
-                {
-                "recorder_name": "absorption"
-                },
-                {
-                "recorder_name": "smoothed_config_lis"
+                    "recorder_name": "max_latency"
                 }
-            ],
-            "threshold": {
-                "threshold_name": "timed",
-                "max_rds": 15000
-            }
+            ]
         }
     ]
 }

@@ -91,6 +91,10 @@ impl Simulation {
                 recorder.record(rd, false, &self.network, None);
             }
 
+            if self.threshold.check_termination(rd, &self.network) {
+                break;
+            }
+
             // Forward.
             let absorbed = self.protocol.forward_packets(&mut self.network);
 
